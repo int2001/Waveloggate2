@@ -144,6 +144,10 @@
     <span class="profile-name">{cfg.profileNames[cfg.profile] || 'Profile ' + (cfg.profile+1)}</span>
   </div>
 
+  <!-- {#key cfg.profile} forces all inputs to be recreated when the active profile changes,
+       preventing stale browser input state from leaking across profile switches. -->
+  {#key cfg.profile}
+
   <!-- WaveLog section -->
   <section>
     <div class="section-title">WaveLog</div>
@@ -232,6 +236,8 @@
       </div>
     {/if}
   </section>
+
+  {/key}
 
   <!-- Bottom buttons -->
   <div class="bottom-bar">

@@ -141,7 +141,11 @@ func (c *Client) SendQSO(adifStr string, dryRun bool) (*QSOResult, error) {
 		return &QSOResult{Success: false, Reason: strings.Join(ar.Messages, ", ")}, nil
 	}
 
-	if ar.Status == "created" {
+	statusLower := strings.ToLower(ar.Status)
+	reasonLower := strings.ToLower(ar.Reason)
+	isDryrunOK := dryRun && (strings.Contains(statusLower, "dryrun") || strings.Contains(reasonLower, "dryrun"))
+
+	if ar.Status == "created" || isDryrunOK {
 		return &QSOResult{
 			Success: true,
 			Call:    ar.Call,
