@@ -50,7 +50,7 @@ func (a *App) startup(ctx context.Context) {
 
 	profile := cfg.ActiveProfile()
 
-	// WaveLog client.
+	// Wavelog client.
 	a.wlClient = wavelog.New(&profile, appVersion)
 
 	// WebSocket hub.
@@ -199,7 +199,7 @@ func (a *App) SaveConfig(cfg config.Config) config.Config {
 	return a.cfg
 }
 
-// TestResult is the result of a WaveLog connectivity test.
+// TestResult is the result of a Wavelog connectivity test.
 type TestResult struct {
 	Success bool   `json:"success"`
 	Reason  string `json:"reason"`
@@ -207,8 +207,8 @@ type TestResult struct {
 
 const demoADIF = `<call:5>DJ7NT <gridsquare:4>JO30 <mode:3>FT8 <rst_sent:3>-15 <rst_rcvd:2>33 <qso_date:8>20240110 <time_on:6>051855 <qso_date_off:8>20240110 <time_off:6>051855 <band:3>40m <freq:8>7.155783 <station_callsign:5>TE1ST <my_gridsquare:6>JO30OO <eor>`
 
-// TestWaveLog tests WaveLog connectivity with a demo ADIF record.
-func (a *App) TestWaveLog(profile config.Profile) TestResult {
+// TestWavelog tests Wavelog connectivity with a demo ADIF record.
+func (a *App) TestWavelog(profile config.Profile) TestResult {
 	client := wavelog.New(&profile, appVersion)
 	result, err := client.SendQSO(demoADIF, true)
 	if err != nil {
@@ -217,7 +217,7 @@ func (a *App) TestWaveLog(profile config.Profile) TestResult {
 	return TestResult{Success: result.Success, Reason: result.Reason}
 }
 
-// GetStations fetches station profiles from WaveLog.
+// GetStations fetches station profiles from Wavelog.
 func (a *App) GetStations(url, key string) []wavelog.Station {
 	profile := config.Profile{
 		WavelogURL: url,

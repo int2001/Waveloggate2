@@ -28,4 +28,4 @@ export function SaveConfig(arg1:config.Config):Promise<config.Config>;
 
 export function SwitchProfile(arg1:number):Promise<void>;
 
-export function TestWaveLog(arg1:config.Profile):Promise<main.TestResult>;
+export function TestWavelog(arg1:config.Profile):Promise<main.TestResult>;

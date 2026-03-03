@@ -1,7 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import {
-    GetConfig, SaveConfig, TestWaveLog, GetStations,
+    GetConfig, SaveConfig, TestWavelog, GetStations,
     CreateProfile, DeleteProfile, RenameProfile, SwitchProfile,
     SaveAdvanced, GetUDPStatus
   } from '../wailsjs/go/main/App.js';
@@ -64,7 +64,7 @@
   async function test() {
     testMsg = 'Testing…';
     testSuccess = null;
-    const result = await TestWaveLog(activeProfile());
+    const result = await TestWavelog(activeProfile());
     testSuccess = result.success;
     testMsg = result.success ? 'Connection OK ✓' : 'Failed: ' + result.reason;
     setTimeout(() => { testMsg = ''; testSuccess = null; }, 5000);
@@ -151,9 +151,9 @@
        preventing stale browser input state from leaking across profile switches. -->
   {#key cfg.profile}
 
-  <!-- WaveLog section -->
+  <!-- Wavelog section -->
   <section>
-    <div class="section-title">WaveLog</div>
+    <div class="section-title">Wavelog</div>
 
     <div class="row">
       <label class="field-label" for="wl-url">URL</label>

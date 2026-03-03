@@ -77,7 +77,7 @@ func configPath() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Join(dir, "WaveLogGate", "config.json"), nil
+	return filepath.Join(dir, "WavelogGate", "config.json"), nil
 }
 
 func Load() (Config, error) {

@@ -137,7 +137,7 @@ func (p *Poller) poll() {
 			p.onStatus(status)
 		}
 
-		// Send to WaveLog.
+		// Send to Wavelog.
 		if p.wlClient != nil {
 			data := wavelog.RadioData{
 				Radio:     cfg.WavelogRadioname,
