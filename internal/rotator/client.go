@@ -15,7 +15,7 @@ import (
 
 const (
 	busyWatchdog    = 5 * time.Second
-	pollInterval    = 2 * time.Second
+	pollInterval    = 1 * time.Second
 	pollSuppression = 3 * time.Second
 	connTimeout     = 3 * time.Second
 	wsRateLimit     = 150 * time.Millisecond
