@@ -12,11 +12,11 @@
   $: radioEnabled = radioType !== "none";
 
   function onEnableChange(e) {
-    dispatch("typechange", e.target.checked ? lastType : "none");
+    dispatch("typechange", e.currentTarget.checked ? lastType : "none");
   }
 
   function onTypeChange(e) {
-    dispatch("typechange", e.target.value);
+    dispatch("typechange", e.currentTarget.value);
   }
 </script>
 
@@ -59,7 +59,7 @@
           value={radioType === "flrig" ? profile.flrig_host : profile.hamlib_host}
           on:change={(e) => dispatch("fieldchange", {
             key: radioType === "flrig" ? "flrig_host" : "hamlib_host",
-            value: e.target.value,
+            value: e.currentTarget.value,
           })}
         />
         <label class="text-fg-label text-2xs ml-1 cursor-default" for="radio-port">Port</label>
@@ -70,7 +70,7 @@
           value={radioType === "flrig" ? profile.flrig_port : profile.hamlib_port}
           on:change={(e) => dispatch("fieldchange", {
             key: radioType === "flrig" ? "flrig_port" : "hamlib_port",
-            value: e.target.value,
+            value: e.currentTarget.value,
           })}
         />
       </div>
@@ -80,7 +80,7 @@
           <input
             type="checkbox"
             checked={profile.wavelog_pmode}
-            on:change={(e) => dispatch("fieldchange", { key: "wavelog_pmode", value: e.target.checked })}
+            on:change={(e) => dispatch("fieldchange", { key: "wavelog_pmode", value: e.currentTarget.checked })}
           />
           Set MODE on QSY
         </label>
@@ -89,7 +89,7 @@
             <input
               type="checkbox"
               checked={profile.ignore_pwr}
-              on:change={(e) => dispatch("fieldchange", { key: "ignore_pwr", value: e.target.checked })}
+              on:change={(e) => dispatch("fieldchange", { key: "ignore_pwr", value: e.currentTarget.checked })}
             />
             Ignore Power
           </label>

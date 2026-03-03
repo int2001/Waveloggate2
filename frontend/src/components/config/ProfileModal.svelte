@@ -23,9 +23,12 @@
   }
 
   async function doDeleteProfile(i) {
-    const err = await DeleteProfile(i);
-    if (err) { alert(err); return; }
-    dispatch("configchanged");
+    try {
+      await DeleteProfile(i);
+      dispatch("configchanged");
+    } catch (e) {
+      alert(e);
+    }
   }
 
   async function doRenameProfile() {

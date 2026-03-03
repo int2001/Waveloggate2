@@ -15,15 +15,15 @@
   });
 
   async function save() {
-    const err = await SaveAdvanced(advUdpEnabled, advUdpPort);
-    if (err) {
-      advStatus = "Error: " + err;
-    } else {
+    try {
+      await SaveAdvanced(advUdpEnabled, advUdpPort);
       advStatus = "Saved ✓";
       setTimeout(() => {
         advStatus = "";
         dispatch("close");
       }, 1500);
+    } catch (e) {
+      advStatus = "Error: " + e;
     }
   }
 </script>

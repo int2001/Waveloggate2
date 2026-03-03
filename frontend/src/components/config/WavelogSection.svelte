@@ -18,7 +18,7 @@
       type="text"
       class="flex-1 w-full"
       value={profile.wavelog_url}
-      on:change={(e) => dispatch("fieldchange", { key: "wavelog_url", value: e.target.value })}
+      on:change={(e) => dispatch("fieldchange", { key: "wavelog_url", value: e.currentTarget.value })}
       on:blur={() => dispatch("reloadstations")}
       placeholder="https://log.example.com/index.php"
     />
@@ -31,7 +31,7 @@
       type="text"
       class="flex-1 w-full"
       value={profile.wavelog_key}
-      on:change={(e) => dispatch("fieldchange", { key: "wavelog_key", value: e.target.value })}
+      on:change={(e) => dispatch("fieldchange", { key: "wavelog_key", value: e.currentTarget.value })}
       on:blur={() => dispatch("reloadstations")}
     />
   </div>
@@ -41,7 +41,7 @@
     <select
       id="wl-station"
       class="flex-1 w-full"
-      on:change={(e) => dispatch("fieldchange", { key: "wavelog_id", value: e.target.value })}
+      on:change={(e) => dispatch("fieldchange", { key: "wavelog_id", value: e.currentTarget.value })}
     >
       <option value="0" selected={profile.wavelog_id === "0" || profile.wavelog_id === 0}>— select —</option>
       {#each stations as s}
@@ -60,7 +60,7 @@
       type="text"
       class="flex-none w-field-sm"
       value={profile.wavelog_radioname}
-      on:change={(e) => dispatch("fieldchange", { key: "wavelog_radioname", value: e.target.value })}
+      on:change={(e) => dispatch("fieldchange", { key: "wavelog_radioname", value: e.currentTarget.value })}
     />
   </div>
 </section>
