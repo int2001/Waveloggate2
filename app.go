@@ -204,6 +204,7 @@ func (a *App) SaveConfig(cfg config.Config) config.Config {
 	a.rotator.UpdateProfile(profile)
 
 	wailsruntime.EventsEmit(a.ctx, "rotator:enabled", profile.RotatorEnabled)
+	wailsruntime.EventsEmit(a.ctx, "radio:enabled", profile.FlrigEna || profile.HamlibEna)
 
 	return a.cfg
 }
@@ -292,7 +293,10 @@ func (a *App) SwitchProfile(index int) error {
 	a.poller.UpdateConfig(&profile)
 	a.rotator.UpdateProfile(profile)
 
-	wailsruntime.EventsEmit(a.ctx, "profile:switched", profile.RotatorEnabled)
+	wailsruntime.EventsEmit(a.ctx, "profile:switched", map[string]interface{}{
+		"rotatorEnabled": profile.RotatorEnabled,
+		"radioEnabled":   profile.FlrigEna || profile.HamlibEna,
+	})
 	return nil
 }
 

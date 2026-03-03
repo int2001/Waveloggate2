@@ -16,6 +16,7 @@
   let qsoResult = null; // { success, call, band, mode, rstSent, rstRcvd, timeOn, reason }
 
   // Rotator state
+  let radioEnabled = false;
   let rotatorEnabled = false;
   let rotConnected = false;
   let rotAz = 0;
@@ -25,7 +26,7 @@
   let satAz = null;
   let satEl = null;
 
-  let offRadio, offQso, offStatus, offRotPos, offRotStatus, offRotBearing, offProfile, offRotEnabled;
+  let offRadio, offQso, offStatus, offRotPos, offRotStatus, offRotBearing, offProfile, offRadioEnabled, offRotEnabled;
 
   onMount(async () => {
     offRadio = EventsOn("radio:status", (data) => {
@@ -59,8 +60,13 @@
       if (!enabled) rotConnected = false;
     });
 
-    offProfile = EventsOn("profile:switched", (newRotatorEnabled) => {
-      rotatorEnabled = newRotatorEnabled || false;
+    offRadioEnabled = EventsOn("radio:enabled", (enabled) => {
+      radioEnabled = enabled;
+    });
+
+    offProfile = EventsOn("profile:switched", (data) => {
+      rotatorEnabled = data?.rotatorEnabled || false;
+      radioEnabled = data?.radioEnabled || false;
       // Reset bearing/follow state when switching profiles.
       hfAz = null; satAz = null; satEl = null;
       rotFollow = "off"; rotConnected = false;
@@ -68,7 +74,9 @@
 
     // Load initial state.
     const cfg = await GetConfig();
-    rotatorEnabled = cfg.profiles?.[cfg.profile]?.rotator_enabled || false;
+    const p = cfg.profiles?.[cfg.profile];
+    radioEnabled = p?.flrig_ena || p?.hamlib_ena || false;
+    rotatorEnabled = p?.rotator_enabled || false;
     if (rotatorEnabled) {
       const s = await GetRotatorStatus();
       rotConnected = s.connected;
@@ -87,6 +95,7 @@
     if (offRotBearing) offRotBearing();
     if (offProfile) offProfile();
     if (offRotEnabled) offRotEnabled();
+    if (offRadioEnabled) offRadioEnabled();
   });
 
   async function setFollow(followMode) {
@@ -101,25 +110,34 @@
 </script>
 
 <div class="py-2.5 px-3 flex flex-col gap-2">
-  <TrxDisplay {freqMHz} {mode} />
 
-  {#if statusMsg}
-    <div class="alert alert-info font-mono text-2xs">{statusMsg}</div>
-  {/if}
-
-  {#if qsoResult}
-    {#if qsoResult.success}
-      <div class="alert alert-success">
-        ✓ QSO logged: <strong>{qsoResult.call}</strong>
-        {qsoResult.band} {qsoResult.mode} {qsoResult.rstSent}/{qsoResult.rstRcvd} {qsoResult.timeOn}
-      </div>
-    {:else}
-      <div class="alert alert-danger">
-        ✗ QSO NOT logged: {qsoResult.reason || "unknown error"}
-      </div>
+  <section class="bg-surface-card border border-stroke-subtle rounded-lg px-4 py-3">
+    <div class="text-fg-muted text-2xs uppercase tracking-widest font-semibold mb-3">
+      Status
+    </div>
+    {#if statusMsg}
+      <div class="alert alert-info font-mono text-2xs">{statusMsg}</div>
     {/if}
-  {/if}
+    {#if qsoResult}
+      {#if qsoResult.success}
+        <div class="alert alert-success">
+          ✓ QSO logged: <strong>{qsoResult.call}</strong>
+          {qsoResult.band} {qsoResult.mode} {qsoResult.rstSent}/{qsoResult.rstRcvd} {qsoResult.timeOn}
+        </div>
+      {:else}
+        <div class="alert alert-danger">
+          ✗ QSO NOT logged: {qsoResult.reason || "unknown error"}
+        </div>
+      {/if}
+    {:else}
+      <div class="text-fg-dim text-sm italic">-</div>
+    {/if}
+  </section>
 
+  {#if radioEnabled}
+    <TrxDisplay {freqMHz} {mode} />
+  {/if}
+  
   {#if rotatorEnabled}
     <RotatorPanel
       {rotConnected} {rotAz} {rotEl} {rotFollow} {hfAz} {satAz} {satEl}
