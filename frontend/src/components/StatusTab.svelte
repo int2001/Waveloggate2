@@ -115,20 +115,23 @@
   }
 </script>
 
-<div class="status-tab">
-  <div class="trx-display">
-    <span class="label">TRX:</span>
+<div class="py-2.5 px-3 flex flex-col gap-2">
+  <!-- TRX display -->
+  <div
+    class="bg-surface-card border border-stroke-subtle rounded px-3 py-2 flex items-center gap-2 font-mono"
+  >
+    <span class="text-fg-muted text-2xs">TRX:</span>
     {#if freqMHz}
-      <span class="freq">{freqMHz} MHz</span>
-      <span class="sep">/</span>
-      <span class="mode">{mode}</span>
+      <span class="text-accent-value text-base font-bold">{freqMHz} MHz</span>
+      <span class="text-fg-dim">/</span>
+      <span class="text-accent-orange text-sm">{mode}</span>
     {:else}
-      <span class="no-radio">No radio data</span>
+      <span class="text-fg-dim text-xs">No radio data</span>
     {/if}
   </div>
 
   {#if statusMsg}
-    <div class="alert alert-info status-msg">{statusMsg}</div>
+    <div class="alert alert-info font-mono text-2xs">{statusMsg}</div>
   {/if}
 
   {#if qsoResult}
@@ -148,26 +151,39 @@
   {/if}
 
   {#if rotatorHost}
-    <div class="rot-panel">
-      <div class="rot-header">
-        <span class="label">ROTATOR</span>
-        <span class="rot-dot" class:connected={rotConnected}></span>
-        <span class="rot-status"
+    <!-- Rotator panel -->
+    <div
+      class="bg-surface-card border border-stroke-subtle rounded px-3 py-2 flex flex-col gap-1.5 font-mono"
+    >
+      <div class="flex items-center gap-1.5">
+        <span class="text-fg-muted text-2xs">ROTATOR</span>
+        <span
+          class="w-2 h-2 rounded-full flex-shrink-0 {rotConnected
+            ? 'bg-accent-green'
+            : 'bg-fg-dim'}"
+        ></span>
+        <span class="text-fg-muted text-2xs"
           >{rotConnected ? "connected" : "disconnected"}</span
         >
       </div>
 
-      <div class="rot-pos">
-        <span class="rot-field"
-          >Az: <span class="rot-val">{rotAz.toFixed(1)}°</span></span
+      <div class="flex gap-4">
+        <span class="text-fg-muted text-xs"
+          >Az: <span class="text-accent-value font-bold"
+            >{rotAz.toFixed(1)}°</span
+          ></span
         >
-        <span class="rot-field"
-          >El: <span class="rot-val">{rotEl.toFixed(1)}°</span></span
+        <span class="text-fg-muted text-xs"
+          >El: <span class="text-accent-value font-bold"
+            >{rotEl.toFixed(1)}°</span
+          ></span
         >
       </div>
 
-      <div class="rot-follow">
-        <label class="rot-radio">
+      <div class="flex gap-3 items-center flex-wrap">
+        <label
+          class="flex items-center gap-1 text-fg-label text-xs cursor-pointer"
+        >
           <input
             type="radio"
             name="follow"
@@ -176,7 +192,9 @@
             on:change={() => setFollow("off")}
           /> Off
         </label>
-        <label class="rot-radio">
+        <label
+          class="flex items-center gap-1 text-fg-label text-xs cursor-pointer"
+        >
           <input
             type="radio"
             name="follow"
@@ -185,11 +203,13 @@
             on:change={() => setFollow("hf")}
           />
           HF
-          {#if hfAz !== null}<span class="rot-bearing"
+          {#if hfAz !== null}<span class="text-accent-orange text-2xs ml-1"
               >Az: {hfAz.toFixed(0)}°</span
             >{/if}
         </label>
-        <label class="rot-radio">
+        <label
+          class="flex items-center gap-1 text-fg-label text-xs cursor-pointer"
+        >
           <input
             type="radio"
             name="follow"
@@ -198,145 +218,15 @@
             on:change={() => setFollow("sat")}
           />
           SAT
-          {#if satAz !== null}<span class="rot-bearing"
+          {#if satAz !== null}<span class="text-accent-orange text-2xs ml-1"
               >Az: {satAz.toFixed(0)}° El: {satEl.toFixed(0)}°</span
             >{/if}
         </label>
       </div>
 
-      <div class="rot-actions">
-        <button class="rot-park-btn" on:click={park}>Park</button>
+      <div class="flex">
+        <button class="text-2xs py-0.5 px-2.5" on:click={park}>Park</button>
       </div>
     </div>
   {/if}
 </div>
-
-<style>
-  .status-tab {
-    padding: 10px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-
-  .trx-display {
-    background: #262626;
-    border: 1px solid #444;
-    border-radius: 4px;
-    padding: 8px 12px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-family: monospace;
-  }
-
-  .label {
-    color: #888;
-    font-size: 11px;
-  }
-
-  .freq {
-    color: #5af;
-    font-size: 16px;
-    font-weight: bold;
-  }
-
-  .sep {
-    color: #666;
-  }
-
-  .mode {
-    color: #fa5;
-    font-size: 14px;
-  }
-
-  .no-radio {
-    color: #666;
-    font-size: 12px;
-  }
-
-  .status-msg {
-    font-family: monospace;
-    font-size: 11px;
-  }
-
-  .rot-panel {
-    background: #262626;
-    border: 1px solid #444;
-    border-radius: 4px;
-    padding: 8px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    font-family: monospace;
-  }
-
-  .rot-header {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-  }
-
-  .rot-dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: #666;
-    flex-shrink: 0;
-  }
-
-  .rot-dot.connected {
-    background: #4c4;
-  }
-
-  .rot-status {
-    color: #888;
-    font-size: 11px;
-  }
-
-  .rot-pos {
-    display: flex;
-    gap: 16px;
-  }
-
-  .rot-field {
-    color: #888;
-    font-size: 12px;
-  }
-
-  .rot-val {
-    color: #5af;
-    font-weight: bold;
-  }
-
-  .rot-follow {
-    display: flex;
-    gap: 12px;
-    align-items: center;
-    flex-wrap: wrap;
-  }
-
-  .rot-radio {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    color: #aaa;
-    font-size: 12px;
-    cursor: pointer;
-  }
-
-  .rot-bearing {
-    color: #fa5;
-    font-size: 11px;
-    margin-left: 4px;
-  }
-
-  .rot-actions {
-    display: flex;
-  }
-
-  .rot-park-btn {
-    font-size: 11px;
-    padding: 2px 10px;
-  }
-</style>

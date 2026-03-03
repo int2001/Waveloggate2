@@ -160,13 +160,15 @@
 </script>
 
 {#if loading}
-  <div class="loading">Loading…</div>
+  <div class="p-5 text-fg-muted text-center">Loading…</div>
 {:else if cfg}
-  <div class="config-tab">
+  <div class="py-2 px-3 flex flex-col gap-1.5">
     <!-- Profile indicator -->
-    <div class="profile-bar">
-      <span class="profile-label">Profile:</span>
-      <span class="profile-name"
+    <div
+      class="flex items-center gap-1.5 bg-surface-card px-2 py-0.5 rounded text-2xs"
+    >
+      <span class="text-fg-muted">Profile:</span>
+      <span class="text-accent-value"
         >{cfg.profileNames[cfg.profile] || "Profile " + (cfg.profile + 1)}</span
       >
     </div>
@@ -175,15 +177,24 @@
        preventing stale browser input state from leaking across profile switches. -->
     {#key cfg.profile}
       <!-- Wavelog section -->
-      <section>
-        <div class="section-title">Wavelog</div>
+      <section
+        class="bg-surface-section border border-stroke-section rounded px-2.5 py-2"
+      >
+        <div
+          class="text-2xs text-fg-muted uppercase tracking-wider mb-1.5 border-b border-stroke-section pb-1"
+        >
+          Wavelog
+        </div>
 
-        <div class="row">
-          <label class="field-label" for="wl-url">URL</label>
+        <div class="flex items-center gap-1.5 mb-1">
+          <label
+            class="w-field-xs flex-shrink-0 text-fg-label text-2xs justify-end"
+            for="wl-url">URL</label
+          >
           <input
             id="wl-url"
             type="text"
-            class="field-input"
+            class="flex-1 w-full"
             value={activeProfile().wavelog_url}
             on:change={(e) => setProfileField("wavelog_url", e.target.value)}
             on:blur={loadStations}
@@ -191,23 +202,29 @@
           />
         </div>
 
-        <div class="row">
-          <label class="field-label" for="wl-key">API Key</label>
+        <div class="flex items-center gap-1.5 mb-1">
+          <label
+            class="w-field-xs flex-shrink-0 text-fg-label text-2xs justify-end"
+            for="wl-key">API Key</label
+          >
           <input
             id="wl-key"
             type="text"
-            class="field-input"
+            class="flex-1 w-full"
             value={activeProfile().wavelog_key}
             on:change={(e) => setProfileField("wavelog_key", e.target.value)}
             on:blur={loadStations}
           />
         </div>
 
-        <div class="row">
-          <label class="field-label" for="wl-station">Station</label>
+        <div class="flex items-center gap-1.5 mb-1">
+          <label
+            class="w-field-xs flex-shrink-0 text-fg-label text-2xs justify-end"
+            for="wl-station">Station</label
+          >
           <select
             id="wl-station"
-            class="field-input"
+            class="flex-1 w-full"
             on:change={(e) => setProfileField("wavelog_id", e.target.value)}
           >
             <option
@@ -226,18 +243,21 @@
             {/each}
           </select>
           <button
-            class="icon-btn"
+            class="py-0.5 px-1.5 text-sm"
             on:click={loadStations}
             title="Reload stations">↻</button
           >
         </div>
 
-        <div class="row">
-          <label class="field-label" for="wl-radio">Radio name</label>
+        <div class="flex items-center gap-1.5 mb-1">
+          <label
+            class="w-field-xs flex-shrink-0 text-fg-label text-2xs justify-end"
+            for="wl-radio">Radio name</label
+          >
           <input
             id="wl-radio"
             type="text"
-            class="field-input short"
+            class="flex-none w-field-sm"
             value={activeProfile().wavelog_radioname}
             on:change={(e) =>
               setProfileField("wavelog_radioname", e.target.value)}
@@ -246,14 +266,23 @@
       </section>
 
       <!-- Radio section -->
-      <section>
-        <div class="section-title">Radio Control</div>
+      <section
+        class="bg-surface-section border border-stroke-section rounded px-2.5 py-2"
+      >
+        <div
+          class="text-2xs text-fg-muted uppercase tracking-wider mb-1.5 border-b border-stroke-section pb-1"
+        >
+          Radio Control
+        </div>
 
-        <div class="row">
-          <label class="field-label" for="radio-type">Type</label>
+        <div class="flex items-center gap-1.5 mb-1">
+          <label
+            class="w-field-xs flex-shrink-0 text-fg-label text-2xs justify-end"
+            for="radio-type">Type</label
+          >
           <select
             id="radio-type"
-            class="field-input short"
+            class="flex-none w-field-sm"
             value={radioType}
             on:change={(e) => setRadioType(e.target.value)}
           >
@@ -264,12 +293,15 @@
         </div>
 
         {#if radioType !== "none"}
-          <div class="row">
-            <label class="field-label" for="radio-host">Host</label>
+          <div class="flex items-center gap-1.5 mb-1">
+            <label
+              class="w-field-xs flex-shrink-0 text-fg-label text-2xs justify-end"
+              for="radio-host">Host</label
+            >
             <input
               id="radio-host"
               type="text"
-              class="field-input short"
+              class="flex-none w-field-sm"
               value={radioType === "flrig"
                 ? activeProfile().flrig_host
                 : activeProfile().hamlib_host}
@@ -279,13 +311,14 @@
                   e.target.value,
                 )}
             />
-            <label class="field-label" for="radio-port" style="margin-left:8px"
-              >Port</label
+            <label
+              class="text-fg-label text-2xs ml-2 cursor-default"
+              for="radio-port">Port</label
             >
             <input
               id="radio-port"
               type="text"
-              class="field-input xshort"
+              class="flex-none w-field-xs"
               value={radioType === "flrig"
                 ? activeProfile().flrig_port
                 : activeProfile().hamlib_port}
@@ -297,7 +330,7 @@
             />
           </div>
 
-          <div class="row checkrow">
+          <div class="flex items-center gap-4 flex-wrap mb-1">
             <label>
               <input
                 type="checkbox"
@@ -324,8 +357,8 @@
     {/key}
 
     <!-- Bottom buttons -->
-    <div class="bottom-bar">
-      <div class="btn-row">
+    <div class="mt-1 flex flex-col items-center gap-1">
+      <div class="flex gap-1.5 flex-wrap">
         <button on:click={save}>💾 Save</button>
         <button on:click={openProfileModal}>Profiles</button>
         <button on:click={test}>Test</button>
@@ -335,15 +368,16 @@
       </div>
 
       {#if saveMsg}
-        <div class="alert alert-success inline-msg">{saveMsg}</div>
+        <div class="alert alert-success text-2xs py-0.5 px-2 inline-block">
+          {saveMsg}
+        </div>
       {/if}
       {#if testMsg}
         <div
-          class="alert"
+          class="alert inline-block py-0.5 px-2"
           class:alert-success={testSuccess}
           class:alert-danger={testSuccess === false}
           class:alert-info={testSuccess === null}
-          style="display:inline-block;padding:2px 8px"
         >
           {testMsg}
         </div>
@@ -364,20 +398,31 @@
     <div class="modal">
       <h4>Profiles</h4>
 
-      <div class="profile-list">
+      <div class="flex flex-col gap-1 mb-2.5 max-h-48 overflow-y-auto">
         {#each cfg.profileNames as name, i}
-          <div class="profile-item" class:active-profile={i === cfg.profile}>
+          <div
+            class="flex items-center justify-between px-2 py-1 bg-surface-section rounded border gap-1.5
+              {i === cfg.profile
+              ? 'border-stroke-accent'
+              : 'border-stroke-section'}"
+          >
             {#if renameIndex === i}
-              <input type="text" bind:value={renameName} class="rename-input" />
+              <input
+                type="text"
+                bind:value={renameName}
+                class="flex-1 bg-surface-input border border-stroke-base text-fg-base px-1.5 rounded text-xs"
+              />
               <button on:click={doRenameProfile}>OK</button>
               <button on:click={() => (renameIndex = -1)}>✕</button>
             {:else}
-              <span class="profile-item-name">{name}</span>
-              <div class="profile-item-btns">
+              <span class="flex-1 text-xs">{name}</span>
+              <div class="flex gap-1">
                 {#if i !== cfg.profile}
                   <button on:click={() => doSwitchProfile(i)}>Switch</button>
                 {:else}
-                  <span class="active-badge">Active</span>
+                  <span class="text-xs text-accent-value px-1.5 py-px"
+                    >Active</span
+                  >
                 {/if}
                 <button
                   on:click={() => {
@@ -394,17 +439,17 @@
         {/each}
       </div>
 
-      <div class="new-profile-row">
+      <div class="flex gap-1.5">
         <input
           type="text"
           bind:value={newProfileName}
           placeholder="New profile name"
-          class="rename-input"
+          class="flex-1 bg-surface-input border border-stroke-base text-fg-base px-1.5 rounded text-xs"
         />
         <button on:click={doCreateProfile}>+ Add</button>
       </div>
 
-      <div style="margin-top:10px;text-align:right">
+      <div class="mt-2.5 text-right">
         <button on:click={() => (showProfileModal = false)}>Close</button>
       </div>
     </div>
@@ -423,19 +468,22 @@
     <div class="modal">
       <h4>Advanced Settings</h4>
 
-      <div class="row">
+      <div class="flex items-center gap-1.5 mb-1">
         <label>
           <input type="checkbox" bind:checked={advUdpEnabled} />
           UDP Listener enabled
         </label>
       </div>
 
-      <div class="row">
-        <label class="field-label" for="adv-port">UDP Port</label>
+      <div class="flex items-center gap-1.5 mb-1">
+        <label
+          class="w-field-xs flex-shrink-0 text-fg-label text-2xs justify-end"
+          for="adv-port">UDP Port</label
+        >
         <input
           id="adv-port"
           type="number"
-          class="field-input xshort"
+          class="flex-none w-field-xs"
           bind:value={advUdpPort}
           min="1024"
           max="65535"
@@ -444,12 +492,10 @@
       </div>
 
       {#if advStatus}
-        <div class="alert alert-info" style="margin-top:8px">{advStatus}</div>
+        <div class="alert alert-info mt-2">{advStatus}</div>
       {/if}
 
-      <div
-        style="margin-top:12px;text-align:right;display:flex;gap:6px;justify-content:flex-end"
-      >
+      <div class="mt-3 flex gap-1.5 justify-end">
         <button on:click={doSaveAdvanced}>Save</button>
         <button on:click={() => (showAdvancedModal = false)}>Cancel</button>
       </div>
@@ -469,34 +515,43 @@
     <div class="modal">
       <h4>Rotator Settings</h4>
 
-      <div class="row">
-        <label class="field-label" for="rot-host">Host</label>
+      <div class="flex items-center gap-1.5 mb-1">
+        <label
+          class="w-field-xs flex-shrink-0 text-fg-label text-2xs justify-end"
+          for="rot-host">Host</label
+        >
         <input
           id="rot-host"
           type="text"
-          class="field-input short"
+          class="flex-none w-field-sm"
           value={activeProfile().rotator_host}
           on:change={(e) => setProfileField("rotator_host", e.target.value)}
           placeholder="leave empty to disable"
         />
       </div>
 
-      <div class="row">
-        <label class="field-label" for="rot-port">Port</label>
+      <div class="flex items-center gap-1.5 mb-1">
+        <label
+          class="w-field-xs flex-shrink-0 text-fg-label text-2xs justify-end"
+          for="rot-port">Port</label
+        >
         <input
           id="rot-port"
           type="text"
-          class="field-input xshort"
+          class="flex-none w-field-xs"
           value={activeProfile().rotator_port}
           on:change={(e) => setProfileField("rotator_port", e.target.value)}
         />
       </div>
 
-      <div class="row">
-        <label class="field-label">Threshold Az</label>
+      <div class="flex items-center gap-1.5 mb-1">
+        <label
+          class="w-field-xs flex-shrink-0 text-fg-label text-2xs justify-end"
+          >Threshold Az</label
+        >
         <input
           type="number"
-          class="field-input xshort"
+          class="flex-none w-field-xs"
           value={activeProfile().rotator_threshold_az}
           on:change={(e) =>
             setProfileField("rotator_threshold_az", Number(e.target.value))}
@@ -504,11 +559,11 @@
           max="360"
           step="0.5"
         />
-        <span class="unit">°</span>
-        <label class="field-label" style="margin-left:8px">El</label>
+        <span class="text-fg-muted text-2xs">°</span>
+        <label class="text-fg-label text-2xs ml-2 cursor-default">El</label>
         <input
           type="number"
-          class="field-input xshort"
+          class="flex-none w-field-xs"
           value={activeProfile().rotator_threshold_el}
           on:change={(e) =>
             setProfileField("rotator_threshold_el", Number(e.target.value))}
@@ -516,14 +571,17 @@
           max="90"
           step="0.5"
         />
-        <span class="unit">°</span>
+        <span class="text-fg-muted text-2xs">°</span>
       </div>
 
-      <div class="row">
-        <label class="field-label">Park Az</label>
+      <div class="flex items-center gap-1.5 mb-1">
+        <label
+          class="w-field-xs flex-shrink-0 text-fg-label text-2xs justify-end"
+          >Park Az</label
+        >
         <input
           type="number"
-          class="field-input xshort"
+          class="flex-none w-field-xs"
           value={activeProfile().rotator_park_az}
           on:change={(e) =>
             setProfileField("rotator_park_az", Number(e.target.value))}
@@ -531,193 +589,24 @@
           max="360"
           step="1"
         />
-        <span class="unit">°</span>
-        <label class="field-label" style="margin-left:8px">El</label>
+        <span class="text-fg-muted text-2xs">°</span>
+        <label class="text-fg-label text-2xs ml-2 cursor-default">El</label>
         <input
           type="number"
-          class="field-input xshort"
+          class="flex-none w-field-xs"
           value={activeProfile().rotator_park_el}
           on:change={(e) =>
             setProfileField("rotator_park_el", Number(e.target.value))}
           min="0"
-          max="90"
+          max="360"
           step="1"
         />
-        <span class="unit">°</span>
+        <span class="text-fg-muted text-2xs">°</span>
       </div>
 
-      <div style="margin-top:12px;text-align:right">
+      <div class="mt-3 text-right">
         <button on:click={() => (showRotatorModal = false)}>Close</button>
       </div>
     </div>
   </div>
 {/if}
-
-<style>
-  .config-tab {
-    padding: 8px 12px;
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-  }
-
-  .loading {
-    padding: 20px;
-    color: #888;
-    text-align: center;
-  }
-
-  .profile-bar {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: #262626;
-    padding: 3px 8px;
-    border-radius: 3px;
-    font-size: 11px;
-  }
-
-  .profile-label {
-    color: #888;
-  }
-  .profile-name {
-    color: #5af;
-  }
-
-  section {
-    background: #2a2a2a;
-    border: 1px solid #404040;
-    border-radius: 4px;
-    padding: 8px 10px;
-  }
-
-  .section-title {
-    font-size: 11px;
-    color: #888;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-bottom: 6px;
-    border-bottom: 1px solid #404040;
-    padding-bottom: 4px;
-  }
-
-  .row {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    margin-bottom: 5px;
-  }
-
-  .checkrow {
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  .field-label {
-    width: 70px;
-    flex-shrink: 0;
-    color: #aaa;
-    font-size: 11px;
-    text-align: right;
-  }
-
-  .field-input {
-    flex: 1;
-    width: 100%;
-  }
-
-  .field-input.short {
-    flex: 0;
-    width: 120px;
-  }
-  .field-input.xshort {
-    flex: 0;
-    width: 70px;
-  }
-
-  .unit {
-    color: #888;
-    font-size: 11px;
-  }
-
-  .icon-btn {
-    padding: 2px 6px;
-    font-size: 14px;
-  }
-
-  .bottom-bar {
-    margin-top: 4px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .btn-row {
-    display: flex;
-    gap: 6px;
-    flex-wrap: wrap;
-  }
-
-  .inline-msg {
-    font-size: 11px;
-    padding: 2px 8px;
-    display: inline-block;
-  }
-
-  /* Profile modal internals */
-  .profile-list {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    margin-bottom: 10px;
-    max-height: 200px;
-    overflow-y: auto;
-  }
-
-  .profile-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 4px 8px;
-    background: #2a2a2a;
-    border-radius: 3px;
-    border: 1px solid #404040;
-    gap: 6px;
-  }
-
-  .profile-item.active-profile {
-    border-color: #5a9fd4;
-  }
-
-  .profile-item-name {
-    flex: 1;
-    font-size: 12px;
-  }
-
-  .profile-item-btns {
-    display: flex;
-    gap: 4px;
-  }
-
-  .active-badge {
-    font-size: 10px;
-    color: #5af;
-    padding: 1px 6px;
-  }
-
-  .new-profile-row {
-    display: flex;
-    gap: 6px;
-  }
-
-  .rename-input {
-    flex: 1;
-    background: #404040;
-    border: 1px solid #555;
-    color: #c6c6c6;
-    padding: 3px 6px;
-    border-radius: 3px;
-    font-size: 12px;
-  }
-</style>

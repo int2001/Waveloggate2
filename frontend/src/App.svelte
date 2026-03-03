@@ -32,85 +32,36 @@
   });
 </script>
 
-<div class="app-shell">
-  <header>
-    <div class="tab-bar">
+<div class="flex flex-col h-screen">
+  <header
+    class="bg-surface-header flex items-center justify-between px-2 h-8 flex-shrink-0 border-b border-stroke-subtle"
+  >
+    <div class="flex gap-0.5">
       <button
-        class="tab-btn"
-        class:active={activeTab === "status"}
+        class="bg-transparent border-0 border-b-2 text-2xs py-1 px-3 cursor-pointer rounded-none
+          {activeTab === 'status'
+          ? 'text-fg-bright border-b-stroke-accent'
+          : 'text-fg-secondary border-b-transparent hover:text-fg-base'}"
         on:click={() => switchTab("status")}>Status</button
       >
       <button
-        class="tab-btn"
-        class:active={activeTab === "config"}
+        class="bg-transparent border-0 border-b-2 text-2xs py-1 px-3 cursor-pointer rounded-none
+          {activeTab === 'config'
+          ? 'text-fg-bright border-b-stroke-accent'
+          : 'text-fg-secondary border-b-transparent hover:text-fg-base'}"
         on:click={() => switchTab("config")}>Configuration</button
       >
     </div>
-    <div class="clock">{utcTime}</div>
+    <div class="text-2xs text-fg-muted font-mono">{utcTime}</div>
   </header>
 
-  <main>
+  <main class="flex-1 overflow-y-auto overflow-x-hidden">
     <div class:hidden={activeTab !== "status"}><StatusTab /></div>
     <div class:hidden={activeTab !== "config"}><ConfigTab /></div>
   </main>
 </div>
 
 <style>
-  .app-shell {
-    display: flex;
-    flex-direction: column;
-    height: 100vh;
-  }
-
-  header {
-    background: #1c1c1c;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 8px;
-    height: 32px;
-    flex-shrink: 0;
-    border-bottom: 1px solid #444;
-  }
-
-  .tab-bar {
-    display: flex;
-    gap: 2px;
-  }
-
-  .tab-btn {
-    background: transparent;
-    border: none;
-    border-bottom: 2px solid transparent;
-    color: #999;
-    padding: 4px 12px;
-    font-size: 12px;
-    cursor: pointer;
-    border-radius: 0;
-  }
-
-  .tab-btn:hover {
-    background: transparent;
-    color: #c6c6c6;
-  }
-
-  .tab-btn.active {
-    color: #e0e0e0;
-    border-bottom-color: #5a9fd4;
-  }
-
-  .clock {
-    font-size: 11px;
-    color: #888;
-    font-family: monospace;
-  }
-
-  main {
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
-
   :global(.hidden) {
     display: none !important;
   }
