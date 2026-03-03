@@ -32,12 +32,13 @@ type Profile struct {
 
 // Config is the root configuration object.
 type Config struct {
-	Version      int       `json:"version"`
-	Profile      int       `json:"profile"`
-	ProfileNames []string  `json:"profileNames"`
-	UDPEnabled   bool      `json:"udp_enabled"`
-	UDPPort      int       `json:"udp_port"`
-	Profiles     []Profile `json:"profiles"`
+	Version        int       `json:"version"`
+	Profile        int       `json:"profile"`
+	ProfileNames   []string  `json:"profileNames"`
+	UDPEnabled     bool      `json:"udp_enabled"`
+	UDPPort        int       `json:"udp_port"`
+	MinimapEnabled bool      `json:"minimap_enabled"`
+	Profiles       []Profile `json:"profiles"`
 }
 
 func defaultProfile() Profile {
@@ -65,12 +66,13 @@ func defaultProfile() Profile {
 
 func Default() Config {
 	return Config{
-		Version:      3,
-		Profile:      0,
-		ProfileNames: []string{"Profile 1", "Profile 2"},
-		UDPEnabled:   true,
-		UDPPort:      2333,
-		Profiles:     []Profile{defaultProfile(), defaultProfile()},
+		Version:        4,
+		Profile:        0,
+		ProfileNames:   []string{"Profile 1", "Profile 2"},
+		UDPEnabled:     true,
+		UDPPort:        2333,
+		MinimapEnabled: false,
+		Profiles:       []Profile{defaultProfile(), defaultProfile()},
 	}
 }
 
@@ -122,7 +124,7 @@ func Save(cfg Config) error {
 	return os.WriteFile(path, data, 0644)
 }
 
-// migrate ensures the config matches version 3 schema.
+// migrate ensures the config matches version 4 schema.
 func migrate(cfg Config) Config {
 	// Ensure at least 2 profiles exist.
 	for len(cfg.Profiles) < 2 {
@@ -139,6 +141,10 @@ func migrate(cfg Config) Config {
 			cfg.UDPPort = 2333
 		}
 		cfg.UDPEnabled = true
+	}
+	if cfg.Version < 4 {
+		cfg.Version = 4
+		// MinimapEnabled defaults to false — already zero value.
 	}
 	return cfg
 }

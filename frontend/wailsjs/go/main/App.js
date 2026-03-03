@@ -38,8 +38,8 @@ export function RotatorSetFollow(arg1) {
   return window['go']['main']['App']['RotatorSetFollow'](arg1);
 }
 
-export function SaveAdvanced(arg1, arg2) {
-  return window['go']['main']['App']['SaveAdvanced'](arg1, arg2);
+export function SaveAdvanced(arg1, arg2, arg3) {
+  return window['go']['main']['App']['SaveAdvanced'](arg1, arg2, arg3);
 }
 
 export function SaveConfig(arg1) {

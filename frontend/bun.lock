@@ -4,6 +4,9 @@
   "workspaces": {
     "": {
       "name": "frontend",
+      "dependencies": {
+        "@fortawesome/fontawesome-free": "^7.2.0",
+      },
       "devDependencies": {
         "@sveltejs/vite-plugin-svelte": "^1.0.1",
         "autoprefixer": "^10.4.27",
@@ -20,6 +23,8 @@
     "@esbuild/android-arm": ["@esbuild/android-arm@0.15.18", "", { "os": "android", "cpu": "arm" }, "sha512-5GT+kcs2WVGjVs7+boataCkO5Fg0y4kCjzkB5bAip7H4jfnOS3dA6KPiww9W1OEKTKeAcUVhdZGvgI65OXmUnw=="],
 
     "@esbuild/linux-loong64": ["@esbuild/linux-loong64@0.15.18", "", { "os": "linux", "cpu": "none" }, "sha512-L4jVKS82XVhw2nvzLg/19ClLWg0y27ulRwuP7lcyL6AbUWB5aPglXY3M21mauDQMDfRLs8cQmeT03r/+X3cZYQ=="],
+
+    "@fortawesome/fontawesome-free": ["@fortawesome/fontawesome-free@7.2.0", "", {}, "sha512-3DguDv/oUE+7vjMeTSOjCSG+KeawgVQOHrKRnvUuqYh1mfArrh7s+s8hXW3e4RerBA1+Wh+hBqf8sJNpqNrBWg=="],
 
     "@jridgewell/gen-mapping": ["@jridgewell/gen-mapping@0.3.13", "", { "dependencies": { "@jridgewell/sourcemap-codec": "^1.5.0", "@jridgewell/trace-mapping": "^0.3.24" } }, "sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA=="],
 

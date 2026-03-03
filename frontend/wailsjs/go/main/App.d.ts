@@ -22,7 +22,7 @@ export function RotatorPark():Promise<void>;
 
 export function RotatorSetFollow(arg1:string):Promise<void>;
 
-export function SaveAdvanced(arg1:boolean,arg2:number):Promise<void>;
+export function SaveAdvanced(arg1:boolean,arg2:number,arg3:boolean):Promise<void>;
 
 export function SaveConfig(arg1:config.Config):Promise<config.Config>;
 
