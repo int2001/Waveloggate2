@@ -162,11 +162,11 @@ func (c *Client) SendQSO(adifStr string, dryRun bool) (*QSOResult, error) {
 	return &QSOResult{Success: false, Reason: reason}, nil
 }
 
+var adifFieldRe = regexp.MustCompile(`(?i)<([A-Z_]+):(\d+)(?::\d+)?>`)
+
 // extractQSOInfoFromADIF extracts key QSO fields from an ADIF string
 func extractQSOInfoFromADIF(adifStr string) map[string]string {
-	// Simple ADIF field extraction using regex
-	fieldRe := regexp.MustCompile(`(?i)<([A-Z_]+):(\d+)(?::\d+)?>`)
-	matches := fieldRe.FindAllStringSubmatch(adifStr, -1)
+	matches := adifFieldRe.FindAllStringSubmatch(adifStr, -1)
 
 	result := make(map[string]string)
 	for _, match := range matches {

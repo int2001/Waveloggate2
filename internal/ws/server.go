@@ -57,19 +57,15 @@ func NewHub() *Hub {
 func (h *Hub) Broadcast(msg []byte) {
 	h.mu.Lock()
 	h.current = msg
-	clients := make([]*client, 0, len(h.clients))
 	for c := range h.clients {
-		clients = append(clients, c)
-	}
-	h.mu.Unlock()
-
-	for _, c := range clients {
 		select {
 		case c.send <- msg:
 		default:
-			h.remove(c)
+			delete(h.clients, c)
+			c.close()
 		}
 	}
+	h.mu.Unlock()
 }
 
 // BroadcastStatus serializes and broadcasts a RadioStatusMsg.
