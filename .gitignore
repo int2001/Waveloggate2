@@ -4,6 +4,7 @@ frontend/dist/
 frontend/node_modules/
 frontend/bun.lockb
 frontend/package.json.md5
+frontend/.vscode/extensions.json
 
 # Go binary
 WavelogGate
