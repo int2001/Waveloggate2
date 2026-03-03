@@ -11,6 +11,7 @@ import (
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"waveloggate/internal/config"
+	"waveloggate/internal/debug"
 	"waveloggate/internal/qsy"
 	"waveloggate/internal/radio"
 	"waveloggate/internal/rotator"
@@ -86,36 +87,50 @@ func (a *App) startup(ctx context.Context) {
 	a.rotator = rot
 
 	a.wsHub.OnMessage = func(data []byte) {
+		debug.Log("[WS] received: %s", data)
+
 		var msg map[string]json.RawMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
+			debug.Log("[WS] unmarshal error: %v", err)
 			return
 		}
 		var msgType string
 		if err := json.Unmarshal(msg["type"], &msgType); err != nil {
+			debug.Log("[WS] missing/invalid 'type' field: %v", err)
 			return
 		}
+		debug.Log("[WS] type=%s", msgType)
+
 		switch msgType {
 		case "lookup_result":
 			var payload map[string]json.RawMessage
 			if err := json.Unmarshal(msg["payload"], &payload); err != nil {
+				debug.Log("[WS] lookup_result: bad 'payload': %v", err)
 				return
 			}
 			az, err := parseRawFloat(payload["azimuth"])
 			if err != nil {
+				debug.Log("[WS] lookup_result: bad 'azimuth': %v | payload keys: %v", err, mapKeys(payload))
 				return
 			}
+			debug.Log("[WS] lookup_result: az=%.1f → HandleWSCommand", az)
 			a.rotator.HandleWSCommand(az, 0, "hf")
 		case "satellite_position":
 			var payload map[string]json.RawMessage
 			if err := json.Unmarshal(msg["data"], &payload); err != nil {
+				debug.Log("[WS] satellite_position: bad 'data': %v", err)
 				return
 			}
 			az, err1 := parseRawFloat(payload["azimuth"])
 			el, err2 := parseRawFloat(payload["elevation"])
 			if err1 != nil || err2 != nil {
+				debug.Log("[WS] satellite_position: bad az/el: %v %v | payload keys: %v", err1, err2, mapKeys(payload))
 				return
 			}
+			debug.Log("[WS] satellite_position: az=%.1f el=%.1f → HandleWSCommand", az, el)
 			a.rotator.HandleWSCommand(az, el, "sat")
+		default:
+			debug.Log("[WS] unhandled type=%s", msgType)
 		}
 	}
 
@@ -340,6 +355,7 @@ func (a *App) GetRotatorStatus() RotatorStatus {
 
 // RotatorSetFollow sets the rotator follow mode ("off", "hf", "sat").
 func (a *App) RotatorSetFollow(mode string) {
+	debug.Log("[ROT] RotatorSetFollow: mode=%s", mode)
 	if a.rotator != nil {
 		a.rotator.SetFollow(mode)
 	}
@@ -379,6 +395,15 @@ func (a *App) SaveAdvanced(udpEnabled bool, udpPort int) error {
 		}
 	}
 	return nil
+}
+
+// mapKeys returns the keys of a map for debug logging.
+func mapKeys(m map[string]json.RawMessage) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 // parseRawFloat parses a json.RawMessage that is either a JSON string or JSON number

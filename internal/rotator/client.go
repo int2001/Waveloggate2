@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"waveloggate/internal/config"
+	"waveloggate/internal/debug"
 )
 
 const (
@@ -53,7 +54,6 @@ type Client struct {
 	busyTimer   *time.Timer
 	pendingSet  *Position // latest P command not yet sent
 	pollPending bool
-	hasSentP    bool // gate: don't poll until first P sent
 	lastPTime   time.Time
 	stopping    bool      // S sent, waiting for RPRT
 	stopAfter   *Position // P to issue after S's RPRT
@@ -110,6 +110,13 @@ func (c *Client) SetFollow(mode FollowMode) {
 	c.followMode = mode
 	if mode == FollowOff {
 		c.pendingSet = nil
+		c.pendingWs = nil
+		c.stopAfter = nil
+		c.stopping = false
+		if c.wsTimer != nil {
+			c.wsTimer.Stop()
+			c.wsTimer = nil
+		}
 		if c.conn != nil && c.currentCmd == "" {
 			fmt.Fprintf(c.conn, "S\n")
 		}
@@ -135,7 +142,11 @@ func (c *Client) HandleWSCommand(az, el float64, typ string) {
 	c.mu.Lock()
 	onBearing := c.OnBearing
 	followMode := c.followMode
+	currentAz := c.currentPos.Az
 	c.mu.Unlock()
+
+	debug.Log("[ROT] WS bearing: type=%s demanded_az=%.1f el=%.1f current_az=%.1f follow=%s",
+		typ, az, el, currentAz, followMode)
 
 	if onBearing != nil {
 		onBearing(typ, az, el)
@@ -144,6 +155,7 @@ func (c *Client) HandleWSCommand(az, el float64, typ string) {
 	// Only queue rotator move if follow mode matches.
 	c.mu.Lock()
 	if (typ == "hf" && followMode != FollowHF) || (typ == "sat" && followMode != FollowSAT) {
+		debug.Log("[ROT] WS bearing dropped: follow=%s does not match type=%s — no move queued", followMode, typ)
 		c.mu.Unlock()
 		return
 	}
@@ -156,6 +168,7 @@ func (c *Client) HandleWSCommand(az, el float64, typ string) {
 			c.wsTimer.Stop()
 			c.wsTimer = nil
 		}
+		debug.Log("[ROT] WS bearing queued immediately: az=%.1f el=%.1f", az, el)
 		c.mu.Unlock()
 		c.signal()
 		return
@@ -164,6 +177,7 @@ func (c *Client) HandleWSCommand(az, el float64, typ string) {
 	// Rate-limit: schedule deferred send.
 	c.pendingWs = &wsCmd{az: az, el: el, typ: typ}
 	remaining := wsRateLimit - now.Sub(c.lastWsCmd)
+	debug.Log("[ROT] WS bearing rate-limited, deferred by %v: az=%.1f el=%.1f", remaining, az, el)
 	if c.wsTimer == nil {
 		c.wsTimer = time.AfterFunc(remaining, func() {
 			c.mu.Lock()
@@ -171,8 +185,14 @@ func (c *Client) HandleWSCommand(az, el float64, typ string) {
 			c.pendingWs = nil
 			c.wsTimer = nil
 			if pw != nil {
-				c.lastWsCmd = time.Now()
-				c.pendingSet = &Position{Az: pw.az, El: pw.el}
+				fm := c.followMode
+				if (pw.typ == "hf" && fm == FollowHF) || (pw.typ == "sat" && fm == FollowSAT) {
+					debug.Log("[ROT] WS deferred bearing applied: az=%.1f el=%.1f follow=%s", pw.az, pw.el, fm)
+					c.lastWsCmd = time.Now()
+					c.pendingSet = &Position{Az: pw.az, El: pw.el}
+				} else {
+					debug.Log("[ROT] WS deferred bearing dropped: follow=%s no longer matches type=%s", fm, pw.typ)
+				}
 			}
 			c.mu.Unlock()
 			c.signal()
@@ -288,7 +308,6 @@ func (c *Client) ensureConnected() {
 	c.currentCmd = ""
 	c.pendingSet = nil
 	c.pollPending = false
-	c.hasSentP = false
 	c.stopping = false
 	c.stopAfter = nil
 	if c.busyTimer != nil {
@@ -333,20 +352,30 @@ func (c *Client) readLoop(conn net.Conn) {
 
 // onLine processes one line received from rotctld. Must be called with mu held.
 func (c *Client) onLine(line string) {
+	debug.Log("[ROT] rotctld → %q (cmd=%s)", line, c.currentCmd)
+	if c.currentCmd == "" {
+		// No command pending — drop unsolicited/stale lines to avoid buffer pollution.
+		return
+	}
 	c.buf += line + "\n"
 
 	switch c.currentCmd {
 	case "set":
 		// Wait for RPRT N
 		if strings.HasPrefix(line, "RPRT ") {
+			code := strings.TrimSpace(strings.TrimPrefix(line, "RPRT "))
+			wasStop := c.stopping
 			c.clearBusy()
-			if c.stopping {
+			if wasStop {
+				debug.Log("[ROT] RPRT %s for S received", code)
 				c.stopping = false
 				if c.stopAfter != nil {
 					pos := c.stopAfter
 					c.stopAfter = nil
 					c.sendP(pos)
 				}
+			} else {
+				debug.Log("[ROT] RPRT %s for P received", code)
 			}
 			c.pollPending = false
 			c.buf = ""
@@ -367,6 +396,7 @@ func (c *Client) onLine(line string) {
 				nums = append(nums, v)
 			}
 		}
+		debug.Log("[ROT] p response raw lines: %q → parsed nums: %v", lines, nums)
 		if len(nums) >= 2 {
 			c.currentPos = Position{Az: nums[0], El: nums[1]}
 			if c.OnPosition != nil {
@@ -402,39 +432,28 @@ func (c *Client) processQueue() {
 				diffAz = 360 - diffAz
 			}
 			diffEl := math.Abs(pos.El - c.lastCmdPos.El)
+			debug.Log("[ROT] threshold check: demanded_az=%.1f last_cmd_az=%.1f diffAz=%.1f (threshAz=%.1f) diffEl=%.1f (threshEl=%.1f)",
+				pos.Az, c.lastCmdPos.Az, diffAz, c.cfg.RotatorThresholdAz, diffEl, c.cfg.RotatorThresholdEl)
 			if diffAz < c.cfg.RotatorThresholdAz && diffEl < c.cfg.RotatorThresholdEl {
+				debug.Log("[ROT] threshold not reached — P suppressed")
 				return
 			}
 		}
 
-		// Check direction reversal: if we're moving and need to reverse,
-		// send S first.
+		// Always stop first, then issue P after rotctld confirms with RPRT.
 		if c.stopping {
-			// Already stopping, queue new target.
+			// S already sent and unconfirmed — just update the target.
+			debug.Log("[ROT] S pending, updating target to az=%.1f el=%.1f", pos.Az, pos.El)
 			c.stopAfter = pos
 			return
 		}
 
-		// Detect direction reversal by checking if new az is on opposite side.
-		needStop := false
-		if c.hasSentP {
-			prevDir := c.lastCmdPos.Az - c.currentPos.Az
-			newDir := pos.Az - c.currentPos.Az
-			if prevDir*newDir < 0 && math.Abs(prevDir) > c.cfg.RotatorThresholdAz {
-				needStop = true
-			}
-		}
-
-		if needStop {
-			fmt.Fprintf(c.conn, "S\n")
-			c.currentCmd = "set"
-			c.stopping = true
-			c.stopAfter = pos
-			c.armBusy()
-			return
-		}
-
-		c.sendP(pos)
+		debug.Log("[ROT] → sending S (before P %.1f %.1f)", pos.Az, pos.El)
+		fmt.Fprintf(c.conn, "S\n")
+		c.currentCmd = "set"
+		c.stopping = true
+		c.stopAfter = pos
+		c.armBusy()
 		return
 	}
 
@@ -451,10 +470,11 @@ func (c *Client) sendP(pos *Position) {
 	if c.conn == nil {
 		return
 	}
+	debug.Log("[ROT] → sending P %.1f %.1f to rotctld (current_az=%.1f follow=%s)",
+		pos.Az, pos.El, c.currentPos.Az, c.followMode)
 	fmt.Fprintf(c.conn, "P %.1f %.1f\n", pos.Az, pos.El)
 	c.lastCmdPos = *pos
 	c.lastPTime = time.Now()
-	c.hasSentP = true
 	c.currentCmd = "set"
 	c.armBusy()
 }

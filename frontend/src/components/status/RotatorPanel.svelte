@@ -14,7 +14,7 @@
   $: azRad = (rotAz - 90) * Math.PI / 180;
   $: elR   = 72 * (1 - rotEl / 90);
 
-  let showMap = localStorage.getItem("rotator.showMap") !== "false";
+  let showMap = localStorage.getItem("rotator.showMap") === "true";
   function toggleMap() {
     showMap = !showMap;
     localStorage.setItem("rotator.showMap", String(showMap));
