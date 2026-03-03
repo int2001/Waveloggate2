@@ -196,7 +196,7 @@ func (a *App) DeleteProfile(index int) error {
 		cfg.Profile = len(cfg.Profiles) - 1
 	}
 	a.cfg = cfg
-	_ = config.Save(cfg)
+	_ = config.Save(a.cfg)
 	return nil
 }
 

@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"regexp"
 	"strings"
 	"time"
 
@@ -15,14 +16,14 @@ import (
 
 // QSOResult holds the result of a QSO submission.
 type QSOResult struct {
-	Success  bool
-	Call     string
-	Band     string
-	Mode     string
-	RstSent  string
-	RstRcvd  string
-	TimeOn   string
-	Reason   string
+	Success  bool   `json:"success"`
+	Call     string `json:"call"`
+	Band     string `json:"band"`
+	Mode     string `json:"mode"`
+	RstSent  string `json:"rstSent"`
+	RstRcvd  string `json:"rstRcvd"`
+	TimeOn   string `json:"timeOn"`
+	Reason   string `json:"reason"`
 }
 
 // RadioData holds the data sent to WaveLog's /api/radio endpoint.
@@ -97,6 +98,9 @@ func (c *Client) SendQSO(adifStr string, dryRun bool) (*QSOResult, error) {
 		endpoint += "/true"
 	}
 
+	// Extract QSO details from ADIF for response (since API doesn't return them for ADIF type)
+	qsoInfo := extractQSOInfoFromADIF(adifStr)
+
 	payload := qsoPayload{
 		Key:              c.cfg.WavelogKey,
 		StationProfileID: c.cfg.WavelogID,
@@ -138,14 +142,16 @@ func (c *Client) SendQSO(adifStr string, dryRun bool) (*QSOResult, error) {
 	}
 
 	if ar.Status == "created" {
+		// For ADIF type, WaveLog API doesn't return QSO details
+		// Use the extracted info from our ADIF string
 		return &QSOResult{
 			Success: true,
-			Call:    ar.Call,
-			Band:    ar.Band,
-			Mode:    ar.Mode,
-			RstSent: ar.RstSent,
-			RstRcvd: ar.RstRcvd,
-			TimeOn:  ar.TimeOn,
+			Call:    qsoInfo["CALL"],
+			Band:    qsoInfo["BAND"],
+			Mode:    qsoInfo["MODE"],
+			RstSent: qsoInfo["RST_SENT"],
+			RstRcvd: qsoInfo["RST_RCVD"],
+			TimeOn:  qsoInfo["TIME_ON"],
 		}, nil
 	}
 
@@ -154,6 +160,32 @@ func (c *Client) SendQSO(adifStr string, dryRun bool) (*QSOResult, error) {
 		reason = ar.Status
 	}
 	return &QSOResult{Success: false, Reason: reason}, nil
+}
+
+// extractQSOInfoFromADIF extracts key QSO fields from an ADIF string
+func extractQSOInfoFromADIF(adifStr string) map[string]string {
+	// Simple ADIF field extraction using regex
+	fieldRe := regexp.MustCompile(`(?i)<([A-Z_]+):(\d+)(?::\d+)?>`)
+	matches := fieldRe.FindAllStringSubmatch(adifStr, -1)
+
+	result := make(map[string]string)
+	for _, match := range matches {
+		if len(match) >= 3 {
+			fieldName := strings.ToUpper(match[1])
+			lengthStr := match[2]
+			var length int
+			fmt.Sscanf(lengthStr, "%d", &length)
+
+			// Find the position after this field tag
+			tagEnd := strings.Index(adifStr, match[0]) + len(match[0])
+			if tagEnd+length <= len(adifStr) {
+				value := strings.TrimSpace(adifStr[tagEnd : tagEnd+length])
+				result[fieldName] = value
+			}
+		}
+	}
+
+	return result
 }
 
 type radioPayload struct {
