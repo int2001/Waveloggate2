@@ -52,7 +52,7 @@ func hzToMHz(hzStr string) string {
 	if err != nil {
 		return hzStr
 	}
-	mhz := hz / 100000.0
+	mhz := hz / 1_000_000.0
 	return fmt.Sprintf("%.6f", mhz)
 }
 

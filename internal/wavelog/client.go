@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"regexp"
 	"strings"
 	"time"
 
+	"waveloggate/internal/adif"
 	"waveloggate/internal/config"
 )
 
@@ -99,7 +99,7 @@ func (c *Client) SendQSO(adifStr string, dryRun bool) (*QSOResult, error) {
 	}
 
 	// Extract QSO details from ADIF for response (since API doesn't return them for ADIF type)
-	qsoInfo := extractQSOInfoFromADIF(adifStr)
+	qsoInfo := adif.Parse(adifStr)
 
 	payload := qsoPayload{
 		Key:              c.cfg.WavelogKey,
@@ -162,31 +162,6 @@ func (c *Client) SendQSO(adifStr string, dryRun bool) (*QSOResult, error) {
 	return &QSOResult{Success: false, Reason: reason}, nil
 }
 
-var adifFieldRe = regexp.MustCompile(`(?i)<([A-Z_]+):(\d+)(?::\d+)?>`)
-
-// extractQSOInfoFromADIF extracts key QSO fields from an ADIF string
-func extractQSOInfoFromADIF(adifStr string) map[string]string {
-	matches := adifFieldRe.FindAllStringSubmatch(adifStr, -1)
-
-	result := make(map[string]string)
-	for _, match := range matches {
-		if len(match) >= 3 {
-			fieldName := strings.ToUpper(match[1])
-			lengthStr := match[2]
-			var length int
-			fmt.Sscanf(lengthStr, "%d", &length)
-
-			// Find the position after this field tag
-			tagEnd := strings.Index(adifStr, match[0]) + len(match[0])
-			if tagEnd+length <= len(adifStr) {
-				value := strings.TrimSpace(adifStr[tagEnd : tagEnd+length])
-				result[fieldName] = value
-			}
-		}
-	}
-
-	return result
-}
 
 type radioPayload struct {
 	Radio       string  `json:"radio"`
