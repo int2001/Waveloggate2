@@ -26,7 +26,7 @@ type QSOResult struct {
 	Reason   string `json:"reason"`
 }
 
-// RadioData holds the data sent to WaveLog's /api/radio endpoint.
+// RadioData holds the data sent to Wavelog's /api/radio endpoint.
 type RadioData struct {
 	Radio       string
 	Key         string
@@ -38,21 +38,21 @@ type RadioData struct {
 	Split       bool
 }
 
-// Station represents a WaveLog station profile.
+// Station represents a Wavelog station profile.
 type Station struct {
 	Name     string `json:"station_profile_name"`
 	Callsign string `json:"station_callsign"`
 	ID       string `json:"station_id"`
 }
 
-// Client communicates with the WaveLog API.
+// Client communicates with the Wavelog API.
 type Client struct {
 	cfg        *config.Profile
 	httpClient *http.Client
 	appVersion string
 }
 
-// New creates a new WaveLog client.
+// New creates a new Wavelog client.
 func New(cfg *config.Profile, appVersion string) *Client {
 	transport := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec
@@ -91,7 +91,7 @@ type apiResponse struct {
 	TimeOn   string   `json:"time_on"`
 }
 
-// SendQSO posts an ADIF string to WaveLog. dryRun uses /api/qso/true.
+// SendQSO posts an ADIF string to Wavelog. dryRun uses /api/qso/true.
 func (c *Client) SendQSO(adifStr string, dryRun bool) (*QSOResult, error) {
 	endpoint := strings.TrimRight(c.cfg.WavelogURL, "/") + "/api/qso"
 	if dryRun {
@@ -142,7 +142,7 @@ func (c *Client) SendQSO(adifStr string, dryRun bool) (*QSOResult, error) {
 	}
 
 	if ar.Status == "created" {
-		// For ADIF type, WaveLog API doesn't return QSO details
+		// For ADIF type, Wavelog API doesn't return QSO details
 		// Use the extracted info from our ADIF string
 		return &QSOResult{
 			Success: true,
@@ -198,7 +198,7 @@ type radioPayload struct {
 	ModeRx      string  `json:"mode_rx,omitempty"`
 }
 
-// UpdateRadioStatus posts radio status to WaveLog's /api/radio.
+// UpdateRadioStatus posts radio status to Wavelog's /api/radio.
 func (c *Client) UpdateRadioStatus(data RadioData) error {
 	endpoint := strings.TrimRight(c.cfg.WavelogURL, "/") + "/api/radio"
 
@@ -245,7 +245,7 @@ func (c *Client) UpdateRadioStatus(data RadioData) error {
 	return nil
 }
 
-// GetStations fetches the station profile list from WaveLog.
+// GetStations fetches the station profile list from Wavelog.
 func (c *Client) GetStations() ([]Station, error) {
 	endpoint := strings.TrimRight(c.cfg.WavelogURL, "/") + "/api/station_info/" + c.cfg.WavelogKey
 

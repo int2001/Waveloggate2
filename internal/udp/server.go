@@ -34,7 +34,7 @@ func New(port int, wlClient *wavelog.Client, onResult QSOResultCallback, onStatu
 	}
 }
 
-// UpdateClient replaces the WaveLog client (e.g. after config change).
+// UpdateClient replaces the Wavelog client (e.g. after config change).
 func (s *Server) UpdateClient(wlClient *wavelog.Client) {
 	s.wlClient = wlClient
 }

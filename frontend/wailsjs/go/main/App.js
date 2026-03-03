@@ -50,6 +50,6 @@ export function SwitchProfile(arg1) {
   return window['go']['main']['App']['SwitchProfile'](arg1);
 }
 
-export function TestWaveLog(arg1) {
-  return window['go']['main']['App']['TestWaveLog'](arg1);
+export function TestWavelog(arg1) {
+  return window['go']['main']['App']['TestWavelog'](arg1);
 }

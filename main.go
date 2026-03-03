@@ -2,20 +2,30 @@ package main
 
 import (
 	"embed"
+	"os"
 
 	"github.com/wailsapp/wails/v2"
 	"github.com/wailsapp/wails/v2/pkg/options"
 	"github.com/wailsapp/wails/v2/pkg/options/assetserver"
+
+	"waveloggate/internal/debug"
 )
 
 //go:embed all:frontend/dist
 var assets embed.FS
 
 func main() {
+	for _, arg := range os.Args[1:] {
+		if arg == "-debug" {
+			debug.Verbose = true
+			break
+		}
+	}
+
 	app := NewApp()
 
 	err := wails.Run(&options.App{
-		Title:            "WaveLogGate v2.0.0",
+		Title:            "WavelogGate v2.0.0",
 		Width:            430,
 		Height:           300,
 		MinWidth:         430,

@@ -11,6 +11,7 @@ import (
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"waveloggate/internal/config"
+	"waveloggate/internal/debug"
 	"waveloggate/internal/qsy"
 	"waveloggate/internal/radio"
 	"waveloggate/internal/rotator"
@@ -50,7 +51,7 @@ func (a *App) startup(ctx context.Context) {
 
 	profile := cfg.ActiveProfile()
 
-	// WaveLog client.
+	// Wavelog client.
 	a.wlClient = wavelog.New(&profile, appVersion)
 
 	// WebSocket hub.
@@ -70,46 +71,66 @@ func (a *App) startup(ctx context.Context) {
 	}
 	rot.OnStatus = func(connected bool) {
 		wailsruntime.EventsEmit(a.ctx, "rotator:status", connected)
+		if connected {
+			a.emitStatus("") // clear any previous rotator error
+		}
 	}
 	rot.OnBearing = func(typ string, az, el float64) {
 		wailsruntime.EventsEmit(a.ctx, "rotator:bearing", map[string]interface{}{
 			"type": typ, "az": az, "el": el,
 		})
 	}
+	rot.OnError = func(msg string) {
+		a.emitStatus(msg)
+	}
 	rot.Start()
 	a.rotator = rot
 
 	a.wsHub.OnMessage = func(data []byte) {
+		debug.Log("[WS] received: %s", data)
+
 		var msg map[string]json.RawMessage
 		if err := json.Unmarshal(data, &msg); err != nil {
+			debug.Log("[WS] unmarshal error: %v", err)
 			return
 		}
 		var msgType string
 		if err := json.Unmarshal(msg["type"], &msgType); err != nil {
+			debug.Log("[WS] missing/invalid 'type' field: %v", err)
 			return
 		}
+		debug.Log("[WS] type=%s", msgType)
+
 		switch msgType {
 		case "lookup_result":
 			var payload map[string]json.RawMessage
 			if err := json.Unmarshal(msg["payload"], &payload); err != nil {
+				debug.Log("[WS] lookup_result: bad 'payload': %v", err)
 				return
 			}
 			az, err := parseRawFloat(payload["azimuth"])
 			if err != nil {
+				debug.Log("[WS] lookup_result: bad 'azimuth': %v | payload keys: %v", err, mapKeys(payload))
 				return
 			}
+			debug.Log("[WS] lookup_result: az=%.1f → HandleWSCommand", az)
 			a.rotator.HandleWSCommand(az, 0, "hf")
 		case "satellite_position":
 			var payload map[string]json.RawMessage
 			if err := json.Unmarshal(msg["data"], &payload); err != nil {
+				debug.Log("[WS] satellite_position: bad 'data': %v", err)
 				return
 			}
 			az, err1 := parseRawFloat(payload["azimuth"])
 			el, err2 := parseRawFloat(payload["elevation"])
 			if err1 != nil || err2 != nil {
+				debug.Log("[WS] satellite_position: bad az/el: %v %v | payload keys: %v", err1, err2, mapKeys(payload))
 				return
 			}
+			debug.Log("[WS] satellite_position: az=%.1f el=%.1f → HandleWSCommand", az, el)
 			a.rotator.HandleWSCommand(az, el, "sat")
+		default:
+			debug.Log("[WS] unhandled type=%s", msgType)
 		}
 	}
 
@@ -195,11 +216,15 @@ func (a *App) SaveConfig(cfg config.Config) config.Config {
 	profile := cfg.ActiveProfile()
 	a.wlClient.UpdateProfile(&profile)
 	a.poller.UpdateConfig(&profile)
+	a.rotator.UpdateProfile(profile)
+
+	wailsruntime.EventsEmit(a.ctx, "rotator:enabled", profile.RotatorEnabled)
+	wailsruntime.EventsEmit(a.ctx, "radio:enabled", profile.FlrigEna || profile.HamlibEna)
 
 	return a.cfg
 }
 
-// TestResult is the result of a WaveLog connectivity test.
+// TestResult is the result of a Wavelog connectivity test.
 type TestResult struct {
 	Success bool   `json:"success"`
 	Reason  string `json:"reason"`
@@ -207,8 +232,8 @@ type TestResult struct {
 
 const demoADIF = `<call:5>DJ7NT <gridsquare:4>JO30 <mode:3>FT8 <rst_sent:3>-15 <rst_rcvd:2>33 <qso_date:8>20240110 <time_on:6>051855 <qso_date_off:8>20240110 <time_off:6>051855 <band:3>40m <freq:8>7.155783 <station_callsign:5>TE1ST <my_gridsquare:6>JO30OO <eor>`
 
-// TestWaveLog tests WaveLog connectivity with a demo ADIF record.
-func (a *App) TestWaveLog(profile config.Profile) TestResult {
+// TestWavelog tests Wavelog connectivity with a demo ADIF record.
+func (a *App) TestWavelog(profile config.Profile) TestResult {
 	client := wavelog.New(&profile, appVersion)
 	result, err := client.SendQSO(demoADIF, true)
 	if err != nil {
@@ -217,7 +242,7 @@ func (a *App) TestWaveLog(profile config.Profile) TestResult {
 	return TestResult{Success: result.Success, Reason: result.Reason}
 }
 
-// GetStations fetches station profiles from WaveLog.
+// GetStations fetches station profiles from Wavelog.
 func (a *App) GetStations(url, key string) []wavelog.Station {
 	profile := config.Profile{
 		WavelogURL: url,
@@ -283,7 +308,10 @@ func (a *App) SwitchProfile(index int) error {
 	a.poller.UpdateConfig(&profile)
 	a.rotator.UpdateProfile(profile)
 
-	wailsruntime.EventsEmit(a.ctx, "profile:switched", profile.RotatorHost)
+	wailsruntime.EventsEmit(a.ctx, "profile:switched", map[string]interface{}{
+		"rotatorEnabled": profile.RotatorEnabled,
+		"radioEnabled":   profile.FlrigEna || profile.HamlibEna,
+	})
 	return nil
 }
 
@@ -327,6 +355,7 @@ func (a *App) GetRotatorStatus() RotatorStatus {
 
 // RotatorSetFollow sets the rotator follow mode ("off", "hf", "sat").
 func (a *App) RotatorSetFollow(mode string) {
+	debug.Log("[ROT] RotatorSetFollow: mode=%s", mode)
 	if a.rotator != nil {
 		a.rotator.SetFollow(mode)
 	}
@@ -366,6 +395,15 @@ func (a *App) SaveAdvanced(udpEnabled bool, udpPort int) error {
 		}
 	}
 	return nil
+}
+
+// mapKeys returns the keys of a map for debug logging.
+func mapKeys(m map[string]json.RawMessage) []string {
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }
 
 // parseRawFloat parses a json.RawMessage that is either a JSON string or JSON number

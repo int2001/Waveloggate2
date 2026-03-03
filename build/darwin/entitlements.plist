@@ -2,7 +2,7 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <!-- outbound connections to WaveLog API, FLRig, Hamlib -->
+    <!-- outbound connections to Wavelog API, FLRig, Hamlib -->
     <key>com.apple.security.network.client</key>
     <true/>
     <!-- inbound: UDP listener, HTTP QSY server, WebSocket hub -->
