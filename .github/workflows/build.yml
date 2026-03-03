@@ -58,6 +58,32 @@ jobs:
       - name: Build
         run: wails build -clean -platform ${{ matrix.platform }}
 
+      - name: Sign (macOS)
+        if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          if [ -z "$APPLE_CERTIFICATE" ]; then
+            echo "::notice::APPLE_CERTIFICATE not set — skipping code signing"
+            exit 0
+          fi
+          echo "$APPLE_CERTIFICATE" | base64 --decode > certificate.p12
+          security create-keychain -p "" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "" build.keychain
+          security import certificate.p12 -k build.keychain \
+            -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" build.keychain
+          rm certificate.p12
+          CERT_NAME=$(security find-identity -v -p codesigning build.keychain \
+            | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)"/\1/')
+          echo "Signing with: $CERT_NAME"
+          /usr/bin/codesign --force --options runtime \
+            --entitlements build/darwin/entitlements.plist \
+            -s "$CERT_NAME" \
+            --deep "build/bin/WaveLogGate.app"
+
       - name: Package (macOS — create DMG)
         if: runner.os == 'macOS'
         run: |
@@ -66,6 +92,25 @@ jobs:
             -srcfolder build/bin/WaveLogGate.app \
             -ov -format UDZO \
             ${{ matrix.artifact }}.dmg
+
+      - name: Notarize (macOS)
+        if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_ID_PASSWORD: ${{ secrets.APPLE_ID_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "$APPLE_CERTIFICATE" ] || [ -z "$APPLE_ID" ]; then
+            echo "::notice::Notarization secrets not set — skipping"
+            exit 0
+          fi
+          xcrun notarytool submit ${{ matrix.artifact }}.dmg \
+            --apple-id "$APPLE_ID" \
+            --team-id "$APPLE_TEAM_ID" \
+            --password "$APPLE_ID_PASSWORD" \
+            --wait
+          xcrun stapler staple ${{ matrix.artifact }}.dmg
 
       - name: Package (Linux — create .deb)
         if: runner.os == 'Linux'
