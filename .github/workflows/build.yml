@@ -89,24 +89,18 @@ jobs:
           cp build/bin/WaveLogGate "${PKG}/usr/local/bin/wavelog-gate"
           cp build/appicon.png "${PKG}/usr/share/icons/hicolor/256x256/apps/wavelog-gate.png"
 
-          cat > "${PKG}/usr/share/applications/wavelog-gate.desktop" << 'DESKTOP'
-[Desktop Entry]
-Name=WaveLogGate
-Comment=Amateur radio gateway to WaveLog
-Exec=/usr/local/bin/wavelog-gate
-Icon=wavelog-gate
-Type=Application
-Categories=HamRadio;Network;
-DESKTOP
+          printf '%s\n' \
+            '[Desktop Entry]' \
+            'Name=WaveLogGate' \
+            'Comment=Amateur radio gateway to WaveLog' \
+            'Exec=/usr/local/bin/wavelog-gate' \
+            'Icon=wavelog-gate' \
+            'Type=Application' \
+            'Categories=HamRadio;Network;' \
+            > "${PKG}/usr/share/applications/wavelog-gate.desktop"
 
-          cat > "${PKG}/DEBIAN/control" << CTRL
-Package: wavelog-gate
-Version: ${VERSION}
-Architecture: amd64
-Maintainer: Joerg <joerg@dj7nt.de>
-Description: WaveLogGate
- Connects WSJT-X/FLDigi and FLRig/Hamlib to WaveLog web logging platform.
-CTRL
+          printf 'Package: wavelog-gate\nVersion: %s\nArchitecture: amd64\nMaintainer: Joerg <joerg@dj7nt.de>\nDescription: WaveLogGate\n Connects WSJT-X/FLDigi and FLRig/Hamlib to WaveLog web logging platform.\n' \
+            "${VERSION}" > "${PKG}/DEBIAN/control"
 
           dpkg-deb --build "${PKG}"
 
