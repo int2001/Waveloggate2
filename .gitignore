@@ -1,0 +1,11 @@
+# Build output
+build/bin/
+frontend/dist/
+frontend/node_modules/
+frontend/bun.lockb
+
+# Go binary
+WaveLogGate
+
+# macOS
+.DS_Store

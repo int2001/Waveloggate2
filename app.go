@@ -1,0 +1,271 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"math"
+
+	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
+
+	"waveloggate/internal/config"
+	"waveloggate/internal/qsy"
+	"waveloggate/internal/radio"
+	"waveloggate/internal/udp"
+	"waveloggate/internal/wavelog"
+	"waveloggate/internal/ws"
+)
+
+const appVersion = "2.0.0"
+
+// App is the Wails application backend.
+type App struct {
+	ctx      context.Context
+	cfg      config.Config
+	udpSrv   *udp.Server
+	wsHub    *ws.Hub
+	qsySrv   *qsy.Server
+	poller   *radio.Poller
+	wlClient *wavelog.Client
+}
+
+// NewApp creates a new App.
+func NewApp() *App {
+	return &App{}
+}
+
+// startup is called by Wails when the application starts.
+func (a *App) startup(ctx context.Context) {
+	a.ctx = ctx
+
+	cfg, err := config.Load()
+	if err != nil {
+		cfg = config.Default()
+	}
+	a.cfg = cfg
+
+	profile := cfg.ActiveProfile()
+
+	// WaveLog client.
+	a.wlClient = wavelog.New(&profile, appVersion)
+
+	// WebSocket hub.
+	a.wsHub = ws.NewHub()
+	go func() {
+		if err := a.wsHub.ListenAndServe(":54322"); err != nil {
+			a.emitStatus("WebSocket error: " + err.Error())
+		}
+	}()
+
+	// Radio poller.
+	a.poller = radio.NewPoller(&profile, a.wlClient, func(status radio.RigStatus) {
+		// Emit to frontend.
+		wailsruntime.EventsEmit(a.ctx, "radio:status", map[string]interface{}{
+			"freqMHz": status.FreqA / 1_000_000,
+			"mode":    status.Mode,
+		})
+
+		// Broadcast to WebSocket clients.
+		a.wsHub.BroadcastStatus(ws.RadioStatusMsg{
+			Type:      "radio_status",
+			Frequency: int64(math.Round(status.FreqA)),
+			Mode:      status.Mode,
+			Power:     status.Power,
+			Radio:     profile.WavelogRadioname,
+		})
+	})
+	a.poller.Start(ctx)
+
+	// QSY server.
+	a.qsySrv = qsy.New(func(hz int64, mode string) error {
+		return a.poller.SetFreqMode(hz, mode)
+	})
+	go func() {
+		if err := a.qsySrv.ListenAndServe(":54321"); err != nil {
+			a.emitStatus("QSY server error: " + err.Error())
+		}
+	}()
+
+	// UDP server.
+	if cfg.UDPEnabled {
+		a.udpSrv = udp.New(
+			cfg.UDPPort,
+			a.wlClient,
+			func(result *wavelog.QSOResult) {
+				wailsruntime.EventsEmit(a.ctx, "qso:result", result)
+			},
+			func(msg string) {
+				a.emitStatus(msg)
+			},
+		)
+		if err := a.udpSrv.Start(); err != nil {
+			a.emitStatus("UDP error: " + err.Error())
+		}
+	}
+}
+
+// shutdown is called by Wails when the application closes.
+func (a *App) shutdown(ctx context.Context) {
+	if a.udpSrv != nil {
+		a.udpSrv.Stop()
+	}
+	if a.poller != nil {
+		a.poller.Stop()
+	}
+}
+
+func (a *App) emitStatus(msg string) {
+	if a.ctx != nil {
+		wailsruntime.EventsEmit(a.ctx, "status:message", msg)
+	}
+}
+
+// ─── Frontend-exposed methods ──────────────────────────────────────────────────
+
+// GetConfig returns the current configuration.
+func (a *App) GetConfig() config.Config {
+	return a.cfg
+}
+
+// SaveConfig saves the configuration and returns the updated config.
+func (a *App) SaveConfig(cfg config.Config) config.Config {
+	a.cfg = cfg
+	_ = config.Save(cfg)
+
+	// Update subsystems with new profile.
+	profile := cfg.ActiveProfile()
+	a.wlClient.UpdateProfile(&profile)
+	a.poller.UpdateConfig(&profile)
+
+	return a.cfg
+}
+
+// TestResult is the result of a WaveLog connectivity test.
+type TestResult struct {
+	Success bool   `json:"success"`
+	Reason  string `json:"reason"`
+}
+
+const demoADIF = `<call:5>DJ7NT <gridsquare:4>JO30 <mode:3>FT8 <rst_sent:3>-15 <rst_rcvd:2>33 <qso_date:8>20240110 <time_on:6>051855 <qso_date_off:8>20240110 <time_off:6>051855 <band:3>40m <freq:8>7.155783 <station_callsign:5>TE1ST <my_gridsquare:6>JO30OO <eor>`
+
+// TestWaveLog tests WaveLog connectivity with a demo ADIF record.
+func (a *App) TestWaveLog(profile config.Profile) TestResult {
+	client := wavelog.New(&profile, appVersion)
+	result, err := client.SendQSO(demoADIF, true)
+	if err != nil {
+		return TestResult{Success: false, Reason: err.Error()}
+	}
+	return TestResult{Success: result.Success, Reason: result.Reason}
+}
+
+// GetStations fetches station profiles from WaveLog.
+func (a *App) GetStations(url, key string) []wavelog.Station {
+	profile := config.Profile{
+		WavelogURL: url,
+		WavelogKey: key,
+	}
+	client := wavelog.New(&profile, appVersion)
+	stations, err := client.GetStations()
+	if err != nil {
+		return []wavelog.Station{}
+	}
+	return stations
+}
+
+// CreateProfile adds a new profile with the given name.
+func (a *App) CreateProfile(name string) (int, error) {
+	cfg := a.cfg
+	cfg.Profiles = append(cfg.Profiles, config.Default().Profiles[0])
+	cfg.ProfileNames = append(cfg.ProfileNames, name)
+	a.cfg = cfg
+	_ = config.Save(cfg)
+	return len(cfg.Profiles) - 1, nil
+}
+
+// DeleteProfile removes a profile by index. Minimum 2 profiles must remain.
+func (a *App) DeleteProfile(index int) error {
+	cfg := a.cfg
+	if len(cfg.Profiles) <= 2 {
+		return fmt.Errorf("cannot delete: minimum 2 profiles required")
+	}
+	if index == cfg.Profile {
+		return fmt.Errorf("cannot delete the active profile")
+	}
+	cfg.Profiles = append(cfg.Profiles[:index], cfg.Profiles[index+1:]...)
+	cfg.ProfileNames = append(cfg.ProfileNames[:index], cfg.ProfileNames[index+1:]...)
+	if cfg.Profile >= len(cfg.Profiles) {
+		cfg.Profile = len(cfg.Profiles) - 1
+	}
+	a.cfg = cfg
+	_ = config.Save(cfg)
+	return nil
+}
+
+// RenameProfile renames a profile by index.
+func (a *App) RenameProfile(index int, name string) error {
+	if index < 0 || index >= len(a.cfg.ProfileNames) {
+		return fmt.Errorf("invalid profile index")
+	}
+	a.cfg.ProfileNames[index] = name
+	_ = config.Save(a.cfg)
+	return nil
+}
+
+// SwitchProfile switches to the profile at the given index.
+func (a *App) SwitchProfile(index int) error {
+	if index < 0 || index >= len(a.cfg.Profiles) {
+		return fmt.Errorf("invalid profile index")
+	}
+	a.cfg.Profile = index
+	_ = config.Save(a.cfg)
+
+	profile := a.cfg.ActiveProfile()
+	a.wlClient.UpdateProfile(&profile)
+	a.poller.UpdateConfig(&profile)
+
+	return nil
+}
+
+// UDPStatus holds current UDP server status.
+type UDPStatus struct {
+	Enabled bool `json:"enabled"`
+	Port    int  `json:"port"`
+	Running bool `json:"running"`
+}
+
+// GetUDPStatus returns the current UDP server status.
+func (a *App) GetUDPStatus() UDPStatus {
+	return UDPStatus{
+		Enabled: a.cfg.UDPEnabled,
+		Port:    a.cfg.UDPPort,
+		Running: a.udpSrv != nil,
+	}
+}
+
+// SaveAdvanced saves global (non-profile) settings.
+func (a *App) SaveAdvanced(udpEnabled bool, udpPort int) error {
+	a.cfg.UDPEnabled = udpEnabled
+	a.cfg.UDPPort = udpPort
+	_ = config.Save(a.cfg)
+
+	// Restart UDP server if needed.
+	if a.udpSrv != nil {
+		a.udpSrv.Stop()
+		a.udpSrv = nil
+	}
+	if udpEnabled {
+		a.udpSrv = udp.New(
+			udpPort,
+			a.wlClient,
+			func(result *wavelog.QSOResult) {
+				wailsruntime.EventsEmit(a.ctx, "qso:result", result)
+			},
+			func(msg string) {
+				a.emitStatus(msg)
+			},
+		)
+		if err := a.udpSrv.Start(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
