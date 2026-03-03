@@ -38,16 +38,16 @@
   >
     <div class="flex gap-0.5">
       <button
-        class="bg-transparent border-0 border-b-2 text-2xs py-1 px-3 cursor-pointer rounded-none
+        class="bg-transparent border-0 border-b-2 text-2xs py-1 px-3 cursor-pointer rounded-none transition-colors duration-100
           {activeTab === 'status'
-          ? 'text-fg-bright border-b-stroke-accent'
+          ? 'text-fg-bright border-b-stroke-accent font-medium'
           : 'text-fg-secondary border-b-transparent hover:text-fg-base'}"
         on:click={() => switchTab("status")}>Status</button
       >
       <button
-        class="bg-transparent border-0 border-b-2 text-2xs py-1 px-3 cursor-pointer rounded-none
+        class="bg-transparent border-0 border-b-2 text-2xs py-1 px-3 cursor-pointer rounded-none transition-colors duration-100
           {activeTab === 'config'
-          ? 'text-fg-bright border-b-stroke-accent'
+          ? 'text-fg-bright border-b-stroke-accent font-medium'
           : 'text-fg-secondary border-b-transparent hover:text-fg-base'}"
         on:click={() => switchTab("config")}>Configuration</button
       >
