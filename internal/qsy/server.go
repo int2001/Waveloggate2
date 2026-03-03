@@ -6,27 +6,20 @@ import (
 	"strings"
 )
 
-// SetFreqModeFunc is the callback invoked when a QSY request arrives.
-type SetFreqModeFunc func(hz int64, mode string) error
-
 // Server is the QSY HTTP server.
 type Server struct {
-	setFreqMode SetFreqModeFunc
+	setFreqMode func(hz int64, mode string) error
 }
 
 // New creates a new QSY server.
-func New(fn SetFreqModeFunc) *Server {
+func New(fn func(hz int64, mode string) error) *Server {
 	return &Server{setFreqMode: fn}
 }
 
-func corsHeaders(w http.ResponseWriter) {
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
-}
-
-func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	corsHeaders(w)
 
 	if r.Method == http.MethodOptions {
 		w.Header().Set("Access-Control-Max-Age", "86400")

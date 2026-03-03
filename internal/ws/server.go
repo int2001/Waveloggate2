@@ -53,8 +53,7 @@ func NewHub() *Hub {
 	}
 }
 
-// Broadcast sends a message to all connected clients.
-func (h *Hub) Broadcast(msg []byte) {
+func (h *Hub) broadcast(msg []byte) {
 	h.mu.Lock()
 	h.current = msg
 	for c := range h.clients {
@@ -75,7 +74,7 @@ func (h *Hub) BroadcastStatus(msg RadioStatusMsg) {
 	if err != nil {
 		return
 	}
-	h.Broadcast(data)
+	h.broadcast(data)
 }
 
 func (h *Hub) add(c *client) {

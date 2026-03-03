@@ -9,34 +9,23 @@ import (
 	"waveloggate/internal/wavelog"
 )
 
-// QSOResultCallback is called after each QSO is processed.
-type QSOResultCallback func(result *wavelog.QSOResult)
-
-// StatusCallback is called with status messages.
-type StatusCallback func(msg string)
-
 // Server is the UDP listener for WSJT-X / FLDigi packets.
 type Server struct {
-	port      int
-	wlClient  *wavelog.Client
-	onResult  QSOResultCallback
-	onStatus  StatusCallback
-	conn      *net.UDPConn
+	port     int
+	wlClient *wavelog.Client
+	onResult func(result *wavelog.QSOResult)
+	onStatus func(msg string)
+	conn     *net.UDPConn
 }
 
 // New creates a new UDP server.
-func New(port int, wlClient *wavelog.Client, onResult QSOResultCallback, onStatus StatusCallback) *Server {
+func New(port int, wlClient *wavelog.Client, onResult func(result *wavelog.QSOResult), onStatus func(msg string)) *Server {
 	return &Server{
 		port:     port,
 		wlClient: wlClient,
 		onResult: onResult,
 		onStatus: onStatus,
 	}
-}
-
-// UpdateClient replaces the Wavelog client (e.g. after config change).
-func (s *Server) UpdateClient(wlClient *wavelog.Client) {
-	s.wlClient = wlClient
 }
 
 // Start binds the UDP socket and begins receiving datagrams.

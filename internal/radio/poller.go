@@ -98,13 +98,6 @@ func (p *Poller) SetFreqMode(hz int64, mode string) error {
 	return client.SetFreqMode(hz, setMode)
 }
 
-// CurrentStatus returns the last known radio status.
-func (p *Poller) CurrentStatus() RigStatus {
-	p.mu.Lock()
-	defer p.mu.Unlock()
-	return p.lastStatus
-}
-
 func (p *Poller) poll() {
 	p.mu.Lock()
 	client := p.client

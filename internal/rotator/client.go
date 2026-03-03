@@ -22,7 +22,7 @@ const (
 	wsRateLimit     = 150 * time.Millisecond
 )
 
-type FollowMode = string
+type FollowMode string
 
 const (
 	FollowOff FollowMode = "off"

@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -143,7 +144,7 @@ func migrate(cfg Config) Config {
 }
 
 func defaultProfileName(idx int) string {
-	return "Profile " + string(rune('1'+idx))
+	return fmt.Sprintf("Profile %d", idx+1)
 }
 
 // ActiveProfile returns the currently active profile.

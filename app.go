@@ -349,7 +349,7 @@ func (a *App) GetRotatorStatus() RotatorStatus {
 		Connected:  a.rotator.IsConnected(),
 		Az:         pos.Az,
 		El:         pos.El,
-		FollowMode: a.rotator.GetFollowMode(),
+		FollowMode: string(a.rotator.GetFollowMode()),
 	}
 }
 
@@ -357,7 +357,7 @@ func (a *App) GetRotatorStatus() RotatorStatus {
 func (a *App) RotatorSetFollow(mode string) {
 	debug.Log("[ROT] RotatorSetFollow: mode=%s", mode)
 	if a.rotator != nil {
-		a.rotator.SetFollow(mode)
+		a.rotator.SetFollow(rotator.FollowMode(mode))
 	}
 }
 
