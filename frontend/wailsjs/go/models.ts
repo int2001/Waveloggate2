@@ -13,6 +13,7 @@ export namespace config {
 	    hamlib_port: string;
 	    hamlib_ena: boolean;
 	    ignore_pwr: boolean;
+	    rotator_enabled: boolean;
 	    rotator_host: string;
 	    rotator_port: string;
 	    rotator_threshold_az: number;
@@ -38,6 +39,7 @@ export namespace config {
 	        this.hamlib_port = source["hamlib_port"];
 	        this.hamlib_ena = source["hamlib_ena"];
 	        this.ignore_pwr = source["ignore_pwr"];
+	        this.rotator_enabled = source["rotator_enabled"];
 	        this.rotator_host = source["rotator_host"];
 	        this.rotator_port = source["rotator_port"];
 	        this.rotator_threshold_az = source["rotator_threshold_az"];

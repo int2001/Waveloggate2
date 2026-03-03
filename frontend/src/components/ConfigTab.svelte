@@ -8,9 +8,9 @@
   } from "../../wailsjs/go/main/App.js";
   import WavelogSection from "./config/WavelogSection.svelte";
   import RadioSection from "./config/RadioSection.svelte";
+  import RotatorSection from "./config/RotatorSection.svelte";
   import ProfileModal from "./config/ProfileModal.svelte";
   import AdvancedModal from "./config/AdvancedModal.svelte";
-  import RotatorModal from "./config/RotatorModal.svelte";
 
   let cfg = null;
   let stations = [];
@@ -21,7 +21,6 @@
 
   let showProfileModal = false;
   let showAdvancedModal = false;
-  let showRotatorModal = false;
 
   onMount(async () => {
     cfg = await GetConfig();
@@ -30,7 +29,7 @@
   });
 
   function activeProfile() {
-    return cfg.profiles[cfg.profile] || cfg.profiles[0];
+    return { ...(cfg.profiles[cfg.profile] || cfg.profiles[0]) };
   }
 
   function setProfileField(key, value) {
@@ -74,6 +73,8 @@
         : "none"
     : "none";
 
+  $: rotatorEnabled = cfg?.profiles?.[cfg.profile]?.rotator_enabled ?? false;
+
   function setRadioType(type) {
     setProfileField("flrig_ena", type === "flrig");
     setProfileField("hamlib_ena", type === "hamlib");
@@ -113,18 +114,21 @@
         on:fieldchange={(e) => setProfileField(e.detail.key, e.detail.value)}
         on:typechange={(e) => setRadioType(e.detail)}
       />
+      <RotatorSection
+        profile={activeProfile()}
+        {rotatorEnabled}
+        on:fieldchange={(e) => setProfileField(e.detail.key, e.detail.value)}
+      />
     {/key}
 
     <!-- Bottom action bar -->
     <div class="border-t border-stroke-section pt-2.5 flex items-center justify-between">
       <div class="flex gap-2">
-        <!-- Save is the primary action: accent border + bright text -->
         <button class="border-stroke-accent text-fg-bright" on:click={save}>Save</button>
         <button on:click={test}>Test</button>
       </div>
       <div class="flex gap-1.5">
         <button on:click={() => (showAdvancedModal = true)}>⚙ Advanced</button>
-        <button on:click={() => (showRotatorModal = true)}>⊙ Rotator</button>
       </div>
     </div>
 
@@ -153,12 +157,4 @@
 
 {#if showAdvancedModal}
   <AdvancedModal on:close={() => (showAdvancedModal = false)} />
-{/if}
-
-{#if showRotatorModal && cfg}
-  <RotatorModal
-    profile={activeProfile()}
-    on:fieldchange={(e) => setProfileField(e.detail.key, e.detail.value)}
-    on:close={() => (showRotatorModal = false)}
-  />
 {/if}

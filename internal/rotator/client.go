@@ -70,6 +70,7 @@ type Client struct {
 	OnPosition func(az, el float64)            // → Wails event rotator:position
 	OnStatus   func(connected bool)             // → Wails event rotator:status
 	OnBearing  func(typ string, az, el float64) // → Wails event rotator:bearing
+	OnError    func(msg string)                 // → Wails event status:message
 
 	cmdCh  chan struct{}
 	stopCh chan struct{}
@@ -244,8 +245,8 @@ func (c *Client) ensureConnected() {
 	connTarget := c.connTarget
 	c.mu.Unlock()
 
-	if host == "" {
-		// No host configured — disconnect if currently connected.
+	if host == "" || !c.cfg.RotatorEnabled {
+		// No host configured or rotator disabled — disconnect if currently connected.
 		c.mu.Lock()
 		wasConnected := c.conn != nil
 		if wasConnected {
@@ -274,6 +275,9 @@ func (c *Client) ensureConnected() {
 	if err != nil {
 		if c.OnStatus != nil {
 			go c.OnStatus(false)
+		}
+		if c.OnError != nil {
+			go c.OnError("Rotator: " + err.Error())
 		}
 		return
 	}
@@ -434,7 +438,7 @@ func (c *Client) processQueue() {
 		return
 	}
 
-	if c.pollPending && c.hasSentP && time.Since(c.lastPTime) > pollSuppression {
+	if c.pollPending && time.Since(c.lastPTime) > pollSuppression {
 		c.pollPending = false
 		fmt.Fprintf(c.conn, "p\n")
 		c.currentCmd = "get"

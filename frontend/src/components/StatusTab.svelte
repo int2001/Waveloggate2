@@ -16,7 +16,7 @@
   let qsoResult = null; // { success, call, band, mode, rstSent, rstRcvd, timeOn, reason }
 
   // Rotator state
-  let rotatorHost = "";
+  let rotatorEnabled = false;
   let rotConnected = false;
   let rotAz = 0;
   let rotEl = 0;
@@ -25,7 +25,7 @@
   let satAz = null;
   let satEl = null;
 
-  let offRadio, offQso, offStatus, offRotPos, offRotStatus, offRotBearing, offProfile;
+  let offRadio, offQso, offStatus, offRotPos, offRotStatus, offRotBearing, offProfile, offRotEnabled;
 
   onMount(async () => {
     offRadio = EventsOn("radio:status", (data) => {
@@ -54,8 +54,13 @@
       if (data.type === "sat") { satAz = data.az; satEl = data.el; }
     });
 
-    offProfile = EventsOn("profile:switched", (newRotatorHost) => {
-      rotatorHost = newRotatorHost || "";
+    offRotEnabled = EventsOn("rotator:enabled", (enabled) => {
+      rotatorEnabled = enabled;
+      if (!enabled) rotConnected = false;
+    });
+
+    offProfile = EventsOn("profile:switched", (newRotatorEnabled) => {
+      rotatorEnabled = newRotatorEnabled || false;
       // Reset bearing/follow state when switching profiles.
       hfAz = null; satAz = null; satEl = null;
       rotFollow = "off"; rotConnected = false;
@@ -63,8 +68,8 @@
 
     // Load initial state.
     const cfg = await GetConfig();
-    rotatorHost = cfg.profiles?.[cfg.profile]?.rotator_host || "";
-    if (rotatorHost) {
+    rotatorEnabled = cfg.profiles?.[cfg.profile]?.rotator_enabled || false;
+    if (rotatorEnabled) {
       const s = await GetRotatorStatus();
       rotConnected = s.connected;
       rotAz = s.az;
@@ -81,6 +86,7 @@
     if (offRotStatus) offRotStatus();
     if (offRotBearing) offRotBearing();
     if (offProfile) offProfile();
+    if (offRotEnabled) offRotEnabled();
   });
 
   async function setFollow(followMode) {
@@ -114,7 +120,7 @@
     {/if}
   {/if}
 
-  {#if rotatorHost}
+  {#if rotatorEnabled}
     <RotatorPanel
       {rotConnected} {rotAz} {rotEl} {rotFollow} {hfAz} {satAz} {satEl}
       on:follow={(e) => setFollow(e.detail)}

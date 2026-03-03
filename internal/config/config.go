@@ -20,6 +20,7 @@ type Profile struct {
 	HamlibPort       string  `json:"hamlib_port"`
 	HamlibEna        bool    `json:"hamlib_ena"`
 	IgnorePwr          bool    `json:"ignore_pwr"`
+	RotatorEnabled     bool    `json:"rotator_enabled"`
 	RotatorHost        string  `json:"rotator_host"`
 	RotatorPort        string  `json:"rotator_port"`
 	RotatorThresholdAz float64 `json:"rotator_threshold_az"`

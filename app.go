@@ -70,11 +70,17 @@ func (a *App) startup(ctx context.Context) {
 	}
 	rot.OnStatus = func(connected bool) {
 		wailsruntime.EventsEmit(a.ctx, "rotator:status", connected)
+		if connected {
+			a.emitStatus("") // clear any previous rotator error
+		}
 	}
 	rot.OnBearing = func(typ string, az, el float64) {
 		wailsruntime.EventsEmit(a.ctx, "rotator:bearing", map[string]interface{}{
 			"type": typ, "az": az, "el": el,
 		})
+	}
+	rot.OnError = func(msg string) {
+		a.emitStatus(msg)
 	}
 	rot.Start()
 	a.rotator = rot
@@ -195,6 +201,9 @@ func (a *App) SaveConfig(cfg config.Config) config.Config {
 	profile := cfg.ActiveProfile()
 	a.wlClient.UpdateProfile(&profile)
 	a.poller.UpdateConfig(&profile)
+	a.rotator.UpdateProfile(profile)
+
+	wailsruntime.EventsEmit(a.ctx, "rotator:enabled", profile.RotatorEnabled)
 
 	return a.cfg
 }
@@ -283,7 +292,7 @@ func (a *App) SwitchProfile(index int) error {
 	a.poller.UpdateConfig(&profile)
 	a.rotator.UpdateProfile(profile)
 
-	wailsruntime.EventsEmit(a.ctx, "profile:switched", profile.RotatorHost)
+	wailsruntime.EventsEmit(a.ctx, "profile:switched", profile.RotatorEnabled)
 	return nil
 }
 

@@ -65,7 +65,7 @@
   <!-- Park -->
   <div class="flex justify-end">
     <button
-      class="text-xs py-1.5 px-4 text-fg-secondary hover:text-fg-base"
+      class="text-xs py-1.5 px-4 text-fg-bright hover:text-fg-base"
       on:click={() => dispatch("park")}
     >Park ⟳</button>
   </div>
