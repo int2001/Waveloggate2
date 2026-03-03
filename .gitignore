@@ -3,10 +3,10 @@ build/bin/
 frontend/dist/
 frontend/node_modules/
 frontend/bun.lockb
+frontend/package.json.md5
 
 # Go binary
 WavelogGate
 
 # macOS
 .DS_Store
-frontend/package.json.md5
