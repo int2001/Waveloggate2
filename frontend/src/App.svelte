@@ -1,11 +1,20 @@
 <script>
   import { onMount, onDestroy } from 'svelte';
+  import { WindowSetSize } from '../wailsjs/runtime/runtime.js';
   import StatusTab from './StatusTab.svelte';
   import ConfigTab from './ConfigTab.svelte';
+
+  const TAB_SIZES = { status: 300, config: 450 };
+  const WIDTH = 430;
 
   let activeTab = 'status';
   let utcTime = '';
   let clockInterval;
+
+  function switchTab(tab) {
+    activeTab = tab;
+    WindowSetSize(WIDTH, TAB_SIZES[tab]);
+  }
 
   function updateClock() {
     const now = new Date();
@@ -13,6 +22,7 @@
   }
 
   onMount(() => {
+    WindowSetSize(WIDTH, TAB_SIZES[activeTab]);
     updateClock();
     clockInterval = setInterval(updateClock, 1000);
   });
@@ -26,9 +36,9 @@
   <header>
     <div class="tab-bar">
       <button class="tab-btn" class:active={activeTab === 'status'}
-        on:click={() => activeTab = 'status'}>Status</button>
+        on:click={() => switchTab('status')}>Status</button>
       <button class="tab-btn" class:active={activeTab === 'config'}
-        on:click={() => activeTab = 'config'}>Configuration</button>
+        on:click={() => switchTab('config')}>Configuration</button>
     </div>
     <div class="clock">{utcTime}</div>
   </header>

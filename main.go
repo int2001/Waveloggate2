@@ -17,9 +17,9 @@ func main() {
 	err := wails.Run(&options.App{
 		Title:            "WaveLogGate v2.0.0",
 		Width:            430,
-		Height:           340,
+		Height:           300,
 		MinWidth:         430,
-		MinHeight:        340,
+		MinHeight:        300,
 		DisableResize:    false,
 		BackgroundColour: &options.RGBA{R: 48, G: 48, B: 48, A: 255},
 		AssetServer: &assetserver.Options{
