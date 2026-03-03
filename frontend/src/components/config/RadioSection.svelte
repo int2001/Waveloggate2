@@ -6,13 +6,13 @@
   export let radioType = "none";
 </script>
 
-<section class="bg-surface-section border border-stroke-section rounded px-2.5 py-2">
-  <div class="text-2xs text-fg-muted font-medium uppercase tracking-wider mb-1.5 border-b border-stroke-section pb-1">
+<section class="bg-surface-section border border-stroke-section rounded-lg px-4 py-3">
+  <div class="text-2xs text-fg-bright font-semibold uppercase tracking-wider mb-3 pl-2 border-l-2 border-stroke-accent">
     Radio Control
   </div>
 
-  <div class="flex items-center gap-1.5 mb-1">
-    <label class="w-field-xs flex-shrink-0 text-fg-label text-2xs justify-end" for="radio-type">Type</label>
+  <div class="flex items-center gap-2 mb-1.5">
+    <label class="w-field-xs flex-shrink-0 text-fg-label text-2xs" for="radio-type">Type</label>
     <select
       id="radio-type"
       class="flex-none w-field-sm"
@@ -26,8 +26,8 @@
   </div>
 
   {#if radioType !== "none"}
-    <div class="flex items-center gap-1.5 mb-1">
-      <label class="w-field-xs flex-shrink-0 text-fg-label text-2xs justify-end" for="radio-host">Host</label>
+    <div class="flex items-center gap-2 mb-1.5">
+      <label class="w-field-xs flex-shrink-0 text-fg-label text-2xs" for="radio-host">Host</label>
       <input
         id="radio-host"
         type="text"
@@ -38,7 +38,7 @@
           value: e.target.value,
         })}
       />
-      <label class="text-fg-label text-2xs ml-2 cursor-default" for="radio-port">Port</label>
+      <label class="text-fg-label text-2xs ml-1 cursor-default" for="radio-port">Port</label>
       <input
         id="radio-port"
         type="text"
@@ -51,8 +51,8 @@
       />
     </div>
 
-    <div class="flex items-center gap-4 flex-wrap mb-1">
-      <label>
+    <div class="flex items-center gap-5 flex-wrap">
+      <label class="text-fg-label text-xs">
         <input
           type="checkbox"
           checked={profile.wavelog_pmode}
@@ -61,7 +61,7 @@
         Set MODE on QSY
       </label>
       {#if radioType === "hamlib"}
-        <label>
+        <label class="text-fg-label text-xs">
           <input
             type="checkbox"
             checked={profile.ignore_pwr}

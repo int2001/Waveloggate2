@@ -6,13 +6,13 @@
   export let stations = [];
 </script>
 
-<section class="bg-surface-section border border-stroke-section rounded px-2.5 py-2">
-  <div class="text-2xs text-fg-muted font-medium uppercase tracking-wider mb-1.5 border-b border-stroke-section pb-1">
+<section class="bg-surface-section border border-stroke-section rounded-lg px-4 py-3">
+  <div class="text-2xs text-fg-bright font-semibold uppercase tracking-wider mb-3 pl-2 border-l-2 border-stroke-accent">
     Wavelog
   </div>
 
-  <div class="flex items-center gap-1.5 mb-1">
-    <label class="w-field-xs flex-shrink-0 text-fg-label text-2xs justify-end" for="wl-url">URL</label>
+  <div class="flex items-center gap-2 mb-1.5">
+    <label class="w-field-xs flex-shrink-0 text-fg-label text-2xs" for="wl-url">URL</label>
     <input
       id="wl-url"
       type="text"
@@ -24,8 +24,8 @@
     />
   </div>
 
-  <div class="flex items-center gap-1.5 mb-1">
-    <label class="w-field-xs flex-shrink-0 text-fg-label text-2xs justify-end" for="wl-key">API Key</label>
+  <div class="flex items-center gap-2 mb-1.5">
+    <label class="w-field-xs flex-shrink-0 text-fg-label text-2xs" for="wl-key">API Key</label>
     <input
       id="wl-key"
       type="text"
@@ -36,8 +36,8 @@
     />
   </div>
 
-  <div class="flex items-center gap-1.5 mb-1">
-    <label class="w-field-xs flex-shrink-0 text-fg-label text-2xs justify-end" for="wl-station">Station</label>
+  <div class="flex items-center gap-2 mb-1.5">
+    <label class="w-field-xs flex-shrink-0 text-fg-label text-2xs" for="wl-station">Station</label>
     <select
       id="wl-station"
       class="flex-1 w-full"
@@ -50,11 +50,11 @@
         </option>
       {/each}
     </select>
-    <button class="py-0.5 px-1.5 text-sm" on:click={() => dispatch("reloadstations")} title="Reload stations">↻</button>
+    <button class="flex-shrink-0 py-1 px-2 text-sm" on:click={() => dispatch("reloadstations")} title="Reload stations">↻</button>
   </div>
 
-  <div class="flex items-center gap-1.5 mb-1">
-    <label class="w-field-xs flex-shrink-0 text-fg-label text-2xs justify-end" for="wl-radio">Radio name</label>
+  <div class="flex items-center gap-2">
+    <label class="w-field-xs flex-shrink-0 text-fg-label text-2xs" for="wl-radio">Radio name</label>
     <input
       id="wl-radio"
       type="text"

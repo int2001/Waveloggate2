@@ -66,10 +66,6 @@
     setTimeout(() => { testMsg = ""; testSuccess = null; }, 5000);
   }
 
-  function quit() {
-    import("../../wailsjs/runtime/runtime.js").then((r) => r.Quit());
-  }
-
   $: radioType = cfg
     ? cfg.profiles[cfg.profile]?.flrig_ena
       ? "flrig"
@@ -87,11 +83,19 @@
 {#if loading}
   <div class="p-5 text-fg-muted text-center">Loading…</div>
 {:else if cfg}
-  <div class="py-2 px-3 flex flex-col gap-1.5">
-    <!-- Profile indicator -->
-    <div class="flex items-center gap-1.5 bg-surface-card border border-stroke-section px-2 py-0.5 rounded text-2xs">
-      <span class="text-fg-muted">Profile:</span>
-      <span class="text-accent-value">{cfg.profileNames[cfg.profile] || "Profile " + (cfg.profile + 1)}</span>
+  <div class="py-3 px-3 flex flex-col gap-2">
+
+    <!-- Profile bar -->
+    <div class="flex items-center justify-between bg-surface-card border border-stroke-section rounded-lg px-4 py-2.5">
+      <div class="flex items-center gap-2.5">
+        <span class="text-fg-bright text-2xs uppercase tracking-widest">Profile</span>
+        <span class="text-accent-value text-sm font-semibold">
+          {cfg.profileNames[cfg.profile] || "Profile " + (cfg.profile + 1)}
+        </span>
+      </div>
+      <button
+        class="text-2xs py-1 px-2.5 text-fg-bright hover:text-fg-base"
+        on:click={() => (showProfileModal = true)}>Manage</button>
     </div>
 
     <!-- {#key cfg.profile} forces all inputs to be recreated when the active profile changes,
@@ -111,29 +115,31 @@
       />
     {/key}
 
-    <!-- Bottom buttons -->
-    <div class="mt-1 border-t border-stroke-section pt-2 flex flex-col items-center gap-1">
-      <div class="flex gap-1.5 flex-wrap">
-        <button on:click={save}>💾 Save</button>
-        <button on:click={() => (showProfileModal = true)}>Profiles</button>
+    <!-- Bottom action bar -->
+    <div class="border-t border-stroke-section pt-2.5 flex items-center justify-between">
+      <div class="flex gap-2">
+        <!-- Save is the primary action: accent border + bright text -->
+        <button class="border-stroke-accent text-fg-bright" on:click={save}>Save</button>
         <button on:click={test}>Test</button>
-        <button on:click={() => (showAdvancedModal = true)}>⚙ Advanced</button>
-        <button on:click={() => (showRotatorModal = true)}>Rot</button>
-        <button on:click={quit}>Quit</button>
       </div>
-
-      {#if saveMsg}
-        <div class="alert alert-success text-2xs py-0.5 px-2 inline-block">{saveMsg}</div>
-      {/if}
-      {#if testMsg}
-        <div
-          class="alert inline-block py-0.5 px-2"
-          class:alert-success={testSuccess}
-          class:alert-danger={testSuccess === false}
-          class:alert-info={testSuccess === null}
-        >{testMsg}</div>
-      {/if}
+      <div class="flex gap-1.5">
+        <button on:click={() => (showAdvancedModal = true)}>⚙ Advanced</button>
+        <button on:click={() => (showRotatorModal = true)}>⊙ Rotator</button>
+      </div>
     </div>
+
+    {#if saveMsg}
+      <div class="alert alert-success py-1 px-3">{saveMsg}</div>
+    {/if}
+    {#if testMsg}
+      <div
+        class="alert py-1 px-3"
+        class:alert-success={testSuccess}
+        class:alert-danger={testSuccess === false}
+        class:alert-info={testSuccess === null}
+      >{testMsg}</div>
+    {/if}
+
   </div>
 {/if}
 

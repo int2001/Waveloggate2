@@ -4,7 +4,7 @@
   import StatusTab from "./components/StatusTab.svelte";
   import ConfigTab from "./components/ConfigTab.svelte";
 
-  const TAB_SIZES = { status: 380, config: 450 };
+  const TAB_SIZES = { status: 420, config: 465 };
   const WIDTH = 430;
 
   let activeTab = "status";
@@ -33,22 +33,20 @@
 </script>
 
 <div class="flex flex-col h-screen">
-  <header
-    class="bg-surface-header flex items-center justify-between px-2 h-8 flex-shrink-0 border-b border-stroke-subtle"
-  >
-    <div class="flex gap-0.5">
+  <header class="bg-surface-header flex items-center justify-between px-3 h-10 flex-shrink-0 border-b border-stroke-subtle">
+    <div class="flex items-center gap-1 bg-surface-app rounded-lg p-1">
       <button
-        class="bg-transparent border-0 border-b-2 text-2xs py-1 px-3 cursor-pointer rounded-none transition-colors duration-100
+        class="flex-1 text-center text-2xs py-1 px-4 cursor-pointer rounded-md border-0 transition-colors duration-150
           {activeTab === 'status'
-          ? 'text-fg-bright border-b-stroke-accent font-medium'
-          : 'text-fg-secondary border-b-transparent hover:text-fg-base'}"
+          ? 'bg-surface-input text-fg-bright font-semibold'
+          : 'bg-transparent text-fg-secondary hover:text-fg-base'}"
         on:click={() => switchTab("status")}>Status</button
       >
       <button
-        class="bg-transparent border-0 border-b-2 text-2xs py-1 px-3 cursor-pointer rounded-none transition-colors duration-100
+        class="flex-1 text-center text-2xs py-1 px-4 cursor-pointer rounded-md border-0 transition-colors duration-150
           {activeTab === 'config'
-          ? 'text-fg-bright border-b-stroke-accent font-medium'
-          : 'text-fg-secondary border-b-transparent hover:text-fg-base'}"
+          ? 'bg-surface-input text-fg-bright font-semibold'
+          : 'bg-transparent text-fg-secondary hover:text-fg-base'}"
         on:click={() => switchTab("config")}>Configuration</button
       >
     </div>

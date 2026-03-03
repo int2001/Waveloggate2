@@ -3,13 +3,21 @@
   export let mode = "";
 </script>
 
-<div class="bg-surface-card border border-stroke-subtle rounded px-3 py-2 flex items-center gap-2.5 font-mono">
-  <span class="text-fg-muted text-2xs pr-2.5 border-r border-stroke-section">TRX</span>
-  {#if freqMHz}
-    <span class="text-accent-value text-base font-bold tracking-wide">{freqMHz} MHz</span>
-    <span class="text-fg-dim text-xs">·</span>
-    <span class="text-accent-orange text-sm font-semibold">{mode}</span>
-  {:else}
-    <span class="text-fg-dim text-xs italic">No radio data</span>
-  {/if}
+<div class="bg-surface-card border border-stroke-subtle rounded-lg px-4 py-3 font-mono">
+  <div class="flex items-start justify-between">
+    <div>
+      <div class="text-fg-muted text-2xs uppercase tracking-widest mb-2">Transceiver</div>
+      {#if freqMHz}
+        <div class="text-accent-value text-2xl font-bold tracking-tight leading-none">{freqMHz}</div>
+        <div class="text-fg-muted text-xs mt-1.5">MHz</div>
+      {:else}
+        <div class="text-fg-dim text-sm italic mt-2">No radio data</div>
+      {/if}
+    </div>
+    {#if mode}
+      <div class="bg-surface-app border border-stroke-section text-accent-orange text-l font-semibold px-2.5 py-1 rounded-md mt-5">
+        {mode}
+      </div>
+    {/if}
+  </div>
 </div>
