@@ -14,6 +14,10 @@ export function GetConfig() {
   return window['go']['main']['App']['GetConfig']();
 }
 
+export function GetRotatorStatus() {
+  return window['go']['main']['App']['GetRotatorStatus']();
+}
+
 export function GetStations(arg1, arg2) {
   return window['go']['main']['App']['GetStations'](arg1, arg2);
 }
@@ -24,6 +28,14 @@ export function GetUDPStatus() {
 
 export function RenameProfile(arg1, arg2) {
   return window['go']['main']['App']['RenameProfile'](arg1, arg2);
+}
+
+export function RotatorPark() {
+  return window['go']['main']['App']['RotatorPark']();
+}
+
+export function RotatorSetFollow(arg1) {
+  return window['go']['main']['App']['RotatorSetFollow'](arg1);
 }
 
 export function SaveAdvanced(arg1, arg2) {

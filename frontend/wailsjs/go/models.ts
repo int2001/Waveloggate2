@@ -13,6 +13,12 @@ export namespace config {
 	    hamlib_port: string;
 	    hamlib_ena: boolean;
 	    ignore_pwr: boolean;
+	    rotator_host: string;
+	    rotator_port: string;
+	    rotator_threshold_az: number;
+	    rotator_threshold_el: number;
+	    rotator_park_az: number;
+	    rotator_park_el: number;
 	
 	    static createFrom(source: any = {}) {
 	        return new Profile(source);
@@ -32,6 +38,12 @@ export namespace config {
 	        this.hamlib_port = source["hamlib_port"];
 	        this.hamlib_ena = source["hamlib_ena"];
 	        this.ignore_pwr = source["ignore_pwr"];
+	        this.rotator_host = source["rotator_host"];
+	        this.rotator_port = source["rotator_port"];
+	        this.rotator_threshold_az = source["rotator_threshold_az"];
+	        this.rotator_threshold_el = source["rotator_threshold_el"];
+	        this.rotator_park_az = source["rotator_park_az"];
+	        this.rotator_park_el = source["rotator_park_el"];
 	    }
 	}
 	export class Config {
@@ -79,6 +91,24 @@ export namespace config {
 
 export namespace main {
 	
+	export class RotatorStatus {
+	    connected: boolean;
+	    az: number;
+	    el: number;
+	    followMode: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RotatorStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.connected = source["connected"];
+	        this.az = source["az"];
+	        this.el = source["el"];
+	        this.followMode = source["followMode"];
+	    }
+	}
 	export class TestResult {
 	    success: boolean;
 	    reason: string;

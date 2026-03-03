@@ -19,7 +19,13 @@ type Profile struct {
 	HamlibHost       string  `json:"hamlib_host"`
 	HamlibPort       string  `json:"hamlib_port"`
 	HamlibEna        bool    `json:"hamlib_ena"`
-	IgnorePwr        bool    `json:"ignore_pwr"`
+	IgnorePwr          bool    `json:"ignore_pwr"`
+	RotatorHost        string  `json:"rotator_host"`
+	RotatorPort        string  `json:"rotator_port"`
+	RotatorThresholdAz float64 `json:"rotator_threshold_az"`
+	RotatorThresholdEl float64 `json:"rotator_threshold_el"`
+	RotatorParkAz      float64 `json:"rotator_park_az"`
+	RotatorParkEl      float64 `json:"rotator_park_el"`
 }
 
 // Config is the root configuration object.
@@ -45,7 +51,13 @@ func defaultProfile() Profile {
 		HamlibHost:       "127.0.0.1",
 		HamlibPort:       "4532",
 		HamlibEna:        false,
-		IgnorePwr:        false,
+		IgnorePwr:          false,
+		RotatorHost:        "",
+		RotatorPort:        "4533",
+		RotatorThresholdAz: 2,
+		RotatorThresholdEl: 2,
+		RotatorParkAz:      0,
+		RotatorParkEl:      0,
 	}
 }
 

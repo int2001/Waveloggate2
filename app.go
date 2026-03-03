@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
+	"strings"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
 	"waveloggate/internal/config"
 	"waveloggate/internal/qsy"
 	"waveloggate/internal/radio"
+	"waveloggate/internal/rotator"
 	"waveloggate/internal/udp"
 	"waveloggate/internal/wavelog"
 	"waveloggate/internal/ws"
@@ -26,6 +30,7 @@ type App struct {
 	qsySrv   *qsy.Server
 	poller   *radio.Poller
 	wlClient *wavelog.Client
+	rotator  *rotator.Client
 }
 
 // NewApp creates a new App.
@@ -55,6 +60,58 @@ func (a *App) startup(ctx context.Context) {
 			a.emitStatus("WebSocket error: " + err.Error())
 		}
 	}()
+
+	// Rotator client.
+	rot := rotator.New(cfg.ActiveProfile())
+	rot.OnPosition = func(az, el float64) {
+		wailsruntime.EventsEmit(a.ctx, "rotator:position", map[string]interface{}{
+			"az": az, "el": el,
+		})
+	}
+	rot.OnStatus = func(connected bool) {
+		wailsruntime.EventsEmit(a.ctx, "rotator:status", connected)
+	}
+	rot.OnBearing = func(typ string, az, el float64) {
+		wailsruntime.EventsEmit(a.ctx, "rotator:bearing", map[string]interface{}{
+			"type": typ, "az": az, "el": el,
+		})
+	}
+	rot.Start()
+	a.rotator = rot
+
+	a.wsHub.OnMessage = func(data []byte) {
+		var msg map[string]json.RawMessage
+		if err := json.Unmarshal(data, &msg); err != nil {
+			return
+		}
+		var msgType string
+		if err := json.Unmarshal(msg["type"], &msgType); err != nil {
+			return
+		}
+		switch msgType {
+		case "lookup_result":
+			var payload map[string]json.RawMessage
+			if err := json.Unmarshal(msg["payload"], &payload); err != nil {
+				return
+			}
+			az, err := parseRawFloat(payload["azimuth"])
+			if err != nil {
+				return
+			}
+			a.rotator.HandleWSCommand(az, 0, "hf")
+		case "satellite_position":
+			var payload map[string]json.RawMessage
+			if err := json.Unmarshal(msg["data"], &payload); err != nil {
+				return
+			}
+			az, err1 := parseRawFloat(payload["azimuth"])
+			el, err2 := parseRawFloat(payload["elevation"])
+			if err1 != nil || err2 != nil {
+				return
+			}
+			a.rotator.HandleWSCommand(az, el, "sat")
+		}
+	}
 
 	// Radio poller.
 	a.poller = radio.NewPoller(&profile, a.wlClient, func(status radio.RigStatus) {
@@ -110,6 +167,9 @@ func (a *App) shutdown(ctx context.Context) {
 	}
 	if a.poller != nil {
 		a.poller.Stop()
+	}
+	if a.rotator != nil {
+		a.rotator.Stop()
 	}
 }
 
@@ -221,7 +281,9 @@ func (a *App) SwitchProfile(index int) error {
 	profile := a.cfg.ActiveProfile()
 	a.wlClient.UpdateProfile(&profile)
 	a.poller.UpdateConfig(&profile)
+	a.rotator.UpdateProfile(profile)
 
+	wailsruntime.EventsEmit(a.ctx, "profile:switched", profile.RotatorHost)
 	return nil
 }
 
@@ -238,6 +300,42 @@ func (a *App) GetUDPStatus() UDPStatus {
 		Enabled: a.cfg.UDPEnabled,
 		Port:    a.cfg.UDPPort,
 		Running: a.udpSrv != nil,
+	}
+}
+
+// RotatorStatus holds the current rotator state for the frontend.
+type RotatorStatus struct {
+	Connected  bool    `json:"connected"`
+	Az         float64 `json:"az"`
+	El         float64 `json:"el"`
+	FollowMode string  `json:"followMode"`
+}
+
+// GetRotatorStatus returns the current rotator status.
+func (a *App) GetRotatorStatus() RotatorStatus {
+	if a.rotator == nil {
+		return RotatorStatus{}
+	}
+	pos := a.rotator.CurrentPosition()
+	return RotatorStatus{
+		Connected:  a.rotator.IsConnected(),
+		Az:         pos.Az,
+		El:         pos.El,
+		FollowMode: a.rotator.GetFollowMode(),
+	}
+}
+
+// RotatorSetFollow sets the rotator follow mode ("off", "hf", "sat").
+func (a *App) RotatorSetFollow(mode string) {
+	if a.rotator != nil {
+		a.rotator.SetFollow(mode)
+	}
+}
+
+// RotatorPark parks the rotator.
+func (a *App) RotatorPark() {
+	if a.rotator != nil {
+		a.rotator.Park()
 	}
 }
 
@@ -268,4 +366,26 @@ func (a *App) SaveAdvanced(udpEnabled bool, udpPort int) error {
 		}
 	}
 	return nil
+}
+
+// parseRawFloat parses a json.RawMessage that is either a JSON string or JSON number
+// into a float64. Handles both "270" (string) and 270 (number) forms.
+func parseRawFloat(raw json.RawMessage) (float64, error) {
+	if len(raw) == 0 {
+		return 0, fmt.Errorf("empty value")
+	}
+	// JSON string: starts with '"'
+	if raw[0] == '"' {
+		var s string
+		if err := json.Unmarshal(raw, &s); err != nil {
+			return 0, err
+		}
+		return strconv.ParseFloat(strings.TrimSpace(s), 64)
+	}
+	// JSON number (or anything else)
+	var f float64
+	if err := json.Unmarshal(raw, &f); err != nil {
+		return 0, err
+	}
+	return f, nil
 }

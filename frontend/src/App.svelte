@@ -4,7 +4,7 @@
   import StatusTab from './StatusTab.svelte';
   import ConfigTab from './ConfigTab.svelte';
 
-  const TAB_SIZES = { status: 300, config: 450 };
+  const TAB_SIZES = { status: 380, config: 450 };
   const WIDTH = 430;
 
   let activeTab = 'status';

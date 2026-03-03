@@ -40,9 +40,10 @@ func (c *client) close() {
 
 // Hub manages WebSocket client connections and broadcasting.
 type Hub struct {
-	mu      sync.RWMutex
-	clients map[*client]struct{}
-	current []byte // last status for welcome messages
+	mu        sync.RWMutex
+	clients   map[*client]struct{}
+	current   []byte // last status for welcome messages
+	OnMessage func(data []byte)
 }
 
 // NewHub creates a new Hub.
@@ -130,10 +131,14 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		h.remove(c)
 	}()
 
-	// Reader: drains incoming messages; on disconnect removes client (closes channel once).
+	// Reader: forwards incoming messages; on disconnect removes client.
 	for {
-		if _, _, err := conn.ReadMessage(); err != nil {
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
 			break
+		}
+		if h.OnMessage != nil {
+			h.OnMessage(msg)
 		}
 	}
 	h.remove(c)

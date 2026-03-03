@@ -27,6 +27,9 @@
   let advUdpPort = 2333;
   let advStatus = '';
 
+  // Rotator modal
+  let showRotatorModal = false;
+
   onMount(async () => {
     cfg = await GetConfig();
     loading = false;
@@ -246,6 +249,7 @@
       <button on:click={openProfileModal}>Profiles</button>
       <button on:click={test}>Test</button>
       <button on:click={openAdvancedModal}>⚙ Advanced</button>
+      <button on:click={() => showRotatorModal = true}>Rot</button>
       <button on:click={quit}>Quit</button>
     </div>
 
@@ -335,6 +339,65 @@
 </div>
 {/if}
 
+<!-- Rotator Modal -->
+{#if showRotatorModal && cfg}
+<div class="modal-overlay" on:click|self={() => showRotatorModal = false}
+  on:keydown={e => e.key === 'Escape' && (showRotatorModal = false)} role="dialog" aria-modal="true">
+  <div class="modal">
+    <h4>Rotator Settings</h4>
+
+    <div class="row">
+      <label class="field-label" for="rot-host">Host</label>
+      <input id="rot-host" type="text" class="field-input short"
+        value={activeProfile().rotator_host}
+        on:change={e => setProfileField('rotator_host', e.target.value)}
+        placeholder="leave empty to disable" />
+    </div>
+
+    <div class="row">
+      <label class="field-label" for="rot-port">Port</label>
+      <input id="rot-port" type="text" class="field-input xshort"
+        value={activeProfile().rotator_port}
+        on:change={e => setProfileField('rotator_port', e.target.value)} />
+    </div>
+
+    <div class="row">
+      <label class="field-label">Threshold Az</label>
+      <input type="number" class="field-input xshort"
+        value={activeProfile().rotator_threshold_az}
+        on:change={e => setProfileField('rotator_threshold_az', Number(e.target.value))}
+        min="0" max="360" step="0.5" />
+      <span class="unit">°</span>
+      <label class="field-label" style="margin-left:8px">El</label>
+      <input type="number" class="field-input xshort"
+        value={activeProfile().rotator_threshold_el}
+        on:change={e => setProfileField('rotator_threshold_el', Number(e.target.value))}
+        min="0" max="90" step="0.5" />
+      <span class="unit">°</span>
+    </div>
+
+    <div class="row">
+      <label class="field-label">Park Az</label>
+      <input type="number" class="field-input xshort"
+        value={activeProfile().rotator_park_az}
+        on:change={e => setProfileField('rotator_park_az', Number(e.target.value))}
+        min="0" max="360" step="1" />
+      <span class="unit">°</span>
+      <label class="field-label" style="margin-left:8px">El</label>
+      <input type="number" class="field-input xshort"
+        value={activeProfile().rotator_park_el}
+        on:change={e => setProfileField('rotator_park_el', Number(e.target.value))}
+        min="0" max="90" step="1" />
+      <span class="unit">°</span>
+    </div>
+
+    <div style="margin-top:12px;text-align:right">
+      <button on:click={() => showRotatorModal = false}>Close</button>
+    </div>
+  </div>
+</div>
+{/if}
+
 <style>
   .config-tab {
     padding: 8px 12px;
@@ -406,6 +469,11 @@
 
   .field-input.short { flex: 0; width: 120px; }
   .field-input.xshort { flex: 0; width: 70px; }
+
+  .unit {
+    color: #888;
+    font-size: 11px;
+  }
 
   .icon-btn {
     padding: 2px 6px;
