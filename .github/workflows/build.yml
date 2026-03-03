@@ -30,6 +30,9 @@ jobs:
           - os: windows-latest
             platform: windows/amd64
             artifact: WaveLogGate-windows-amd64
+          - os: windows-latest
+            platform: windows/386
+            artifact: WaveLogGate-windows-x86
           - os: ubuntu-22.04
             platform: linux/amd64
             artifact: WaveLogGate-linux-amd64
@@ -158,10 +161,13 @@ jobs:
 
       - name: Upload artifact (Windows)
         if: runner.os == 'Windows'
-        uses: actions/upload-artifact@v4
+        run: cp build/bin/WaveLogGate.exe ${{ matrix.artifact }}.exe
+        shell: bash
+      - uses: actions/upload-artifact@v4
+        if: runner.os == 'Windows'
         with:
           name: ${{ matrix.artifact }}
-          path: build/bin/WaveLogGate.exe
+          path: ${{ matrix.artifact }}.exe
 
       - name: Upload artifact (Linux)
         if: runner.os == 'Linux'
@@ -190,5 +196,6 @@ jobs:
           files: |
             artifacts/WaveLogGate-darwin-arm64/*.dmg
             artifacts/WaveLogGate-darwin-amd64/*.dmg
-            artifacts/WaveLogGate-windows-amd64/WaveLogGate.exe
+            artifacts/WaveLogGate-windows-amd64/WaveLogGate-windows-amd64.exe
+            artifacts/WaveLogGate-windows-x86/WaveLogGate-windows-x86.exe
             artifacts/WaveLogGate-linux-amd64/*.deb
