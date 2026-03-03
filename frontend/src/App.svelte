@@ -1,14 +1,14 @@
 <script>
-  import { onMount, onDestroy } from 'svelte';
-  import { WindowSetSize } from '../wailsjs/runtime/runtime.js';
-  import StatusTab from './StatusTab.svelte';
-  import ConfigTab from './ConfigTab.svelte';
+  import { onMount, onDestroy } from "svelte";
+  import { WindowSetSize } from "../wailsjs/runtime/runtime.js";
+  import StatusTab from "./components/StatusTab.svelte";
+  import ConfigTab from "./components/ConfigTab.svelte";
 
   const TAB_SIZES = { status: 380, config: 450 };
   const WIDTH = 430;
 
-  let activeTab = 'status';
-  let utcTime = '';
+  let activeTab = "status";
+  let utcTime = "";
   let clockInterval;
 
   function switchTab(tab) {
@@ -18,7 +18,7 @@
 
   function updateClock() {
     const now = new Date();
-    utcTime = now.toUTCString().split(' ').slice(4,5)[0] + ' UTC';
+    utcTime = now.toUTCString().split(" ").slice(4, 5)[0] + " UTC";
   }
 
   onMount(() => {
@@ -35,17 +35,23 @@
 <div class="app-shell">
   <header>
     <div class="tab-bar">
-      <button class="tab-btn" class:active={activeTab === 'status'}
-        on:click={() => switchTab('status')}>Status</button>
-      <button class="tab-btn" class:active={activeTab === 'config'}
-        on:click={() => switchTab('config')}>Configuration</button>
+      <button
+        class="tab-btn"
+        class:active={activeTab === "status"}
+        on:click={() => switchTab("status")}>Status</button
+      >
+      <button
+        class="tab-btn"
+        class:active={activeTab === "config"}
+        on:click={() => switchTab("config")}>Configuration</button
+      >
     </div>
     <div class="clock">{utcTime}</div>
   </header>
 
   <main>
-    <div class:hidden={activeTab !== 'status'}><StatusTab /></div>
-    <div class:hidden={activeTab !== 'config'}><ConfigTab /></div>
+    <div class:hidden={activeTab !== "status"}><StatusTab /></div>
+    <div class:hidden={activeTab !== "config"}><ConfigTab /></div>
   </main>
 </div>
 

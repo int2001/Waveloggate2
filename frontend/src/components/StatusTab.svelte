@@ -1,73 +1,96 @@
 <script>
-  import { onMount, onDestroy } from 'svelte';
-  import { EventsOn } from '../wailsjs/runtime/runtime.js';
-  import { GetConfig, GetRotatorStatus, RotatorSetFollow, RotatorPark } from '../wailsjs/go/main/App.js';
+  import { onMount, onDestroy } from "svelte";
+  import { EventsOn } from "../../wailsjs/runtime/runtime.js";
+  import {
+    GetConfig,
+    GetRotatorStatus,
+    RotatorSetFollow,
+    RotatorPark,
+  } from "../../wailsjs/go/main/App.js";
 
-  let freqMHz = '';
-  let mode = '';
-  let statusMsg = '';
-  let qsoResult = null;  // { success, call, band, mode, rstSent, rstRcvd, timeOn, reason }
+  let freqMHz = "";
+  let mode = "";
+  let statusMsg = "";
+  let qsoResult = null; // { success, call, band, mode, rstSent, rstRcvd, timeOn, reason }
 
   // Rotator state
-  let rotatorHost = '';
+  let rotatorHost = "";
   let rotConnected = false;
   let rotAz = 0;
   let rotEl = 0;
-  let rotFollow = 'off';
+  let rotFollow = "off";
   let hfAz = null;
   let satAz = null;
   let satEl = null;
 
-  let offRadio, offQso, offStatus, offRotPos, offRotStatus, offRotBearing, offProfile;
+  let offRadio,
+    offQso,
+    offStatus,
+    offRotPos,
+    offRotStatus,
+    offRotBearing,
+    offProfile;
 
   onMount(async () => {
-    offRadio = EventsOn('radio:status', (data) => {
+    offRadio = EventsOn("radio:status", (data) => {
       if (data && data.freqMHz !== undefined) {
         freqMHz = Number(data.freqMHz).toFixed(6);
-        mode = data.mode || '';
+        mode = data.mode || "";
       }
     });
 
-    offQso = EventsOn('qso:result', (data) => {
+    offQso = EventsOn("qso:result", (data) => {
       qsoResult = data;
-      setTimeout(() => { qsoResult = null; }, 30000);
+      setTimeout(() => {
+        qsoResult = null;
+      }, 30000);
     });
 
-    offStatus = EventsOn('status:message', (msg) => {
+    offStatus = EventsOn("status:message", (msg) => {
       statusMsg = msg;
     });
 
-    offRotPos = EventsOn('rotator:position', (data) => {
-      if (data) { rotAz = data.az; rotEl = data.el; }
+    offRotPos = EventsOn("rotator:position", (data) => {
+      if (data) {
+        rotAz = data.az;
+        rotEl = data.el;
+      }
     });
 
-    offRotStatus = EventsOn('rotator:status', (connected) => {
+    offRotStatus = EventsOn("rotator:status", (connected) => {
       rotConnected = connected;
     });
 
-    offRotBearing = EventsOn('rotator:bearing', (data) => {
+    offRotBearing = EventsOn("rotator:bearing", (data) => {
       if (!data) return;
-      if (data.type === 'hf') { hfAz = data.az; }
-      if (data.type === 'sat') { satAz = data.az; satEl = data.el; }
+      if (data.type === "hf") {
+        hfAz = data.az;
+      }
+      if (data.type === "sat") {
+        satAz = data.az;
+        satEl = data.el;
+      }
     });
 
-    offProfile = EventsOn('profile:switched', (newRotatorHost) => {
-      rotatorHost = newRotatorHost || '';
+    offProfile = EventsOn("profile:switched", (newRotatorHost) => {
+      rotatorHost = newRotatorHost || "";
       // Reset bearing/follow state when switching profiles.
-      hfAz = null; satAz = null; satEl = null;
-      rotFollow = 'off';
+      hfAz = null;
+      satAz = null;
+      satEl = null;
+      rotFollow = "off";
       rotConnected = false;
     });
 
     // Load initial state.
     const cfg = await GetConfig();
-    rotatorHost = cfg.profiles?.[cfg.profile]?.rotator_host || '';
+    rotatorHost = cfg.profiles?.[cfg.profile]?.rotator_host || "";
     if (rotatorHost) {
       const s = await GetRotatorStatus();
       rotConnected = s.connected;
       rotAz = s.az;
       rotEl = s.el;
-      rotFollow = s.followMode || 'off';
+      rotFollow = s.followMode || "off";
     }
   });
 
@@ -87,7 +110,7 @@
   }
 
   async function park() {
-    rotFollow = 'off';
+    rotFollow = "off";
     await RotatorPark();
   }
 </script>
@@ -112,51 +135,79 @@
     {#if qsoResult.success}
       <div class="alert alert-success">
         ✓ QSO logged: <strong>{qsoResult.call}</strong>
-        {qsoResult.band} {qsoResult.mode}
+        {qsoResult.band}
+        {qsoResult.mode}
         {qsoResult.rstSent}/{qsoResult.rstRcvd}
         {qsoResult.timeOn}
       </div>
     {:else}
       <div class="alert alert-danger">
-        ✗ QSO NOT logged: {qsoResult.reason || 'unknown error'}
+        ✗ QSO NOT logged: {qsoResult.reason || "unknown error"}
       </div>
     {/if}
   {/if}
 
   {#if rotatorHost}
-  <div class="rot-panel">
-    <div class="rot-header">
-      <span class="label">ROTATOR</span>
-      <span class="rot-dot" class:connected={rotConnected}></span>
-      <span class="rot-status">{rotConnected ? 'connected' : 'disconnected'}</span>
-    </div>
+    <div class="rot-panel">
+      <div class="rot-header">
+        <span class="label">ROTATOR</span>
+        <span class="rot-dot" class:connected={rotConnected}></span>
+        <span class="rot-status"
+          >{rotConnected ? "connected" : "disconnected"}</span
+        >
+      </div>
 
-    <div class="rot-pos">
-      <span class="rot-field">Az: <span class="rot-val">{rotAz.toFixed(1)}°</span></span>
-      <span class="rot-field">El: <span class="rot-val">{rotEl.toFixed(1)}°</span></span>
-    </div>
+      <div class="rot-pos">
+        <span class="rot-field"
+          >Az: <span class="rot-val">{rotAz.toFixed(1)}°</span></span
+        >
+        <span class="rot-field"
+          >El: <span class="rot-val">{rotEl.toFixed(1)}°</span></span
+        >
+      </div>
 
-    <div class="rot-follow">
-      <label class="rot-radio">
-        <input type="radio" name="follow" value="off" checked={rotFollow === 'off'}
-          on:change={() => setFollow('off')} /> Off
-      </label>
-      <label class="rot-radio">
-        <input type="radio" name="follow" value="hf" checked={rotFollow === 'hf'}
-          on:change={() => setFollow('hf')} /> HF
-        {#if hfAz !== null}<span class="rot-bearing">Az: {hfAz.toFixed(0)}°</span>{/if}
-      </label>
-      <label class="rot-radio">
-        <input type="radio" name="follow" value="sat" checked={rotFollow === 'sat'}
-          on:change={() => setFollow('sat')} /> SAT
-        {#if satAz !== null}<span class="rot-bearing">Az: {satAz.toFixed(0)}°  El: {satEl.toFixed(0)}°</span>{/if}
-      </label>
-    </div>
+      <div class="rot-follow">
+        <label class="rot-radio">
+          <input
+            type="radio"
+            name="follow"
+            value="off"
+            checked={rotFollow === "off"}
+            on:change={() => setFollow("off")}
+          /> Off
+        </label>
+        <label class="rot-radio">
+          <input
+            type="radio"
+            name="follow"
+            value="hf"
+            checked={rotFollow === "hf"}
+            on:change={() => setFollow("hf")}
+          />
+          HF
+          {#if hfAz !== null}<span class="rot-bearing"
+              >Az: {hfAz.toFixed(0)}°</span
+            >{/if}
+        </label>
+        <label class="rot-radio">
+          <input
+            type="radio"
+            name="follow"
+            value="sat"
+            checked={rotFollow === "sat"}
+            on:change={() => setFollow("sat")}
+          />
+          SAT
+          {#if satAz !== null}<span class="rot-bearing"
+              >Az: {satAz.toFixed(0)}° El: {satEl.toFixed(0)}°</span
+            >{/if}
+        </label>
+      </div>
 
-    <div class="rot-actions">
-      <button class="rot-park-btn" on:click={park}>Park</button>
+      <div class="rot-actions">
+        <button class="rot-park-btn" on:click={park}>Park</button>
+      </div>
     </div>
-  </div>
   {/if}
 </div>
 

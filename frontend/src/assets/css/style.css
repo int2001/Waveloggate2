@@ -1,8 +1,11 @@
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
 }
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -20,7 +23,9 @@ html, body {
 }
 
 /* Form elements */
-input[type="text"], input[type="number"], select {
+input[type="text"],
+input[type="number"],
+select {
   background: #404040;
   border: 1px solid #555;
   color: #c6c6c6;
@@ -29,7 +34,9 @@ input[type="text"], input[type="number"], select {
   font-size: 12px;
 }
 
-input[type="text"]:focus, input[type="number"]:focus, select:focus {
+input[type="text"]:focus,
+input[type="number"]:focus,
+select:focus {
   outline: none;
   border-color: #888;
 }
@@ -74,15 +81,30 @@ input[type="checkbox"] {
   font-size: 12px;
   margin: 4px 0;
 }
-.alert-success { background: #1a3a1a; border: 1px solid #2d5a2d; color: #90ee90; }
-.alert-danger  { background: #3a1a1a; border: 1px solid #5a2d2d; color: #ff9090; }
-.alert-info    { background: #1a2a3a; border: 1px solid #2d4a5a; color: #90c0ee; }
+
+.alert-success {
+  background: #1a3a1a;
+  border: 1px solid #2d5a2d;
+  color: #90ee90;
+}
+
+.alert-danger {
+  background: #3a1a1a;
+  border: 1px solid #5a2d2d;
+  color: #ff9090;
+}
+
+.alert-info {
+  background: #1a2a3a;
+  border: 1px solid #2d4a5a;
+  color: #90c0ee;
+}
 
 /* Modal overlay */
 .modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0,0,0,0.6);
+  background: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
