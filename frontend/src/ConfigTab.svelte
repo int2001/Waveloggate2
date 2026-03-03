@@ -416,6 +416,7 @@
     margin-top: 4px;
     display: flex;
     flex-direction: column;
+    align-items: center;
     gap: 4px;
   }
 
