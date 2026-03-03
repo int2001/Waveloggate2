@@ -336,9 +336,11 @@ func GetClosestMode(desired string, available []string) string {
 
 // SelectMode determines the target mode for a QSY operation.
 func SelectMode(requestedMode string, freqHz int64, available []string) string {
-	lower := strings.ToLower(requestedMode)
-	if lower == "cw" {
-		return GetClosestMode("CW", available)
+	if requestedMode != "" {
+		if m := GetClosestMode(strings.ToUpper(requestedMode), available); m != "" {
+			return m
+		}
+		return strings.ToUpper(requestedMode)
 	}
 	if freqHz < 7_999_000 {
 		return "LSB"
