@@ -31,7 +31,7 @@
   onMount(async () => {
     offRadio = EventsOn("radio:status", (data) => {
       if (data && data.freqMHz !== undefined) {
-        freqMHz = Number(data.freqMHz).toFixed(6);
+        freqMHz = Number(data.freqMHz).toFixed(5);
         mode = data.mode || "";
       }
     });
