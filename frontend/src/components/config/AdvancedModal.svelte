@@ -6,17 +6,19 @@
 
   let advUdpEnabled = true;
   let advUdpPort = 2333;
+  let advMinimapEnabled = false;
   let advStatus = "";
 
   onMount(async () => {
     const status = await GetUDPStatus();
     advUdpEnabled = status.enabled;
     advUdpPort = status.port;
+    advMinimapEnabled = status.minimapEnabled;
   });
 
   async function save() {
     try {
-      await SaveAdvanced(advUdpEnabled, advUdpPort);
+      await SaveAdvanced(advUdpEnabled, advUdpPort, advMinimapEnabled);
       advStatus = "Saved ✓";
       setTimeout(() => {
         advStatus = "";
@@ -56,6 +58,13 @@
         max="65535"
         disabled={!advUdpEnabled}
       />
+    </div>
+
+    <div class="flex items-center gap-1.5 mb-1 mt-2 border-t border-stroke-section pt-2">
+      <label>
+        <input type="checkbox" bind:checked={advMinimapEnabled} />
+        Show polar map in Mini-Mode
+      </label>
     </div>
 
     {#if advStatus}

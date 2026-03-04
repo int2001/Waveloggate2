@@ -54,6 +54,7 @@ export namespace config {
 	    profileNames: string[];
 	    udp_enabled: boolean;
 	    udp_port: number;
+	    minimap_enabled: boolean;
 	    profiles: Profile[];
 	
 	    static createFrom(source: any = {}) {
@@ -67,6 +68,7 @@ export namespace config {
 	        this.profileNames = source["profileNames"];
 	        this.udp_enabled = source["udp_enabled"];
 	        this.udp_port = source["udp_port"];
+	        this.minimap_enabled = source["minimap_enabled"];
 	        this.profiles = this.convertValues(source["profiles"], Profile);
 	    }
 	
@@ -129,6 +131,7 @@ export namespace main {
 	    enabled: boolean;
 	    port: number;
 	    running: boolean;
+	    minimapEnabled: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new UDPStatus(source);
@@ -139,6 +142,7 @@ export namespace main {
 	        this.enabled = source["enabled"];
 	        this.port = source["port"];
 	        this.running = source["running"];
+	        this.minimapEnabled = source["minimapEnabled"];
 	    }
 	}
 

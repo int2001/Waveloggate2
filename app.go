@@ -317,17 +317,19 @@ func (a *App) SwitchProfile(index int) error {
 
 // UDPStatus holds current UDP server status.
 type UDPStatus struct {
-	Enabled bool `json:"enabled"`
-	Port    int  `json:"port"`
-	Running bool `json:"running"`
+	Enabled        bool `json:"enabled"`
+	Port           int  `json:"port"`
+	Running        bool `json:"running"`
+	MinimapEnabled bool `json:"minimapEnabled"`
 }
 
 // GetUDPStatus returns the current UDP server status.
 func (a *App) GetUDPStatus() UDPStatus {
 	return UDPStatus{
-		Enabled: a.cfg.UDPEnabled,
-		Port:    a.cfg.UDPPort,
-		Running: a.udpSrv != nil,
+		Enabled:        a.cfg.UDPEnabled,
+		Port:           a.cfg.UDPPort,
+		Running:        a.udpSrv != nil,
+		MinimapEnabled: a.cfg.MinimapEnabled,
 	}
 }
 
@@ -369,10 +371,15 @@ func (a *App) RotatorPark() {
 }
 
 // SaveAdvanced saves global (non-profile) settings.
-func (a *App) SaveAdvanced(udpEnabled bool, udpPort int) error {
+func (a *App) SaveAdvanced(udpEnabled bool, udpPort int, minimapEnabled bool) error {
 	a.cfg.UDPEnabled = udpEnabled
 	a.cfg.UDPPort = udpPort
+	a.cfg.MinimapEnabled = minimapEnabled
 	_ = config.Save(a.cfg)
+
+	wailsruntime.EventsEmit(a.ctx, "advanced:changed", map[string]interface{}{
+		"minimapEnabled": minimapEnabled,
+	})
 
 	// Restart UDP server if needed.
 	if a.udpSrv != nil {
