@@ -143,13 +143,18 @@ func (a *App) startup(ctx context.Context) {
 		})
 
 		// Broadcast to WebSocket clients.
-		a.wsHub.BroadcastStatus(ws.RadioStatusMsg{
+		msg := ws.RadioStatusMsg{
 			Type:      "radio_status",
 			Frequency: int64(math.Round(status.FreqA)),
 			Mode:      status.Mode,
 			Power:     status.Power,
 			Radio:     profile.WavelogRadioname,
-		})
+		}
+		if status.Split {
+			msg.FrequencyRx = int64(math.Round(status.FreqB))
+			msg.ModeRx = status.ModeB
+		}
+		a.wsHub.BroadcastStatus(msg)
 	})
 	a.poller.Start(ctx)
 
