@@ -4,6 +4,7 @@ import (
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -48,6 +49,7 @@ func certDir() (string, error) {
 }
 
 // Setup loads an existing certificate/key pair or generates a new one.
+// Regenerates if the files are missing, unparseable, mismatched, or expired.
 // Returns (paths, newlyGenerated, error).
 func Setup() (Paths, bool, error) {
 	dir, err := certDir()
@@ -60,9 +62,7 @@ func Setup() (Paths, bool, error) {
 		Cert: filepath.Join(dir, "server.crt"),
 	}
 
-	_, errKey := os.Stat(p.Key)
-	_, errCert := os.Stat(p.Cert)
-	if errKey == nil && errCert == nil {
+	if certValid(p) {
 		return p, false, nil
 	}
 
@@ -70,6 +70,23 @@ func Setup() (Paths, bool, error) {
 		return Paths{}, false, err
 	}
 	return p, true, nil
+}
+
+// certValid returns true when the cert and key files exist, can be loaded as a
+// valid TLS pair, and the certificate has not yet expired.
+func certValid(p Paths) bool {
+	tlsCert, err := tls.LoadX509KeyPair(p.Cert, p.Key)
+	if err != nil {
+		return false
+	}
+	if len(tlsCert.Certificate) == 0 {
+		return false
+	}
+	x509Cert, err := x509.ParseCertificate(tlsCert.Certificate[0])
+	if err != nil {
+		return false
+	}
+	return time.Now().Before(x509Cert.NotAfter)
 }
 
 // generate creates a self-signed ECDSA P-256 certificate valid for 10 years.
