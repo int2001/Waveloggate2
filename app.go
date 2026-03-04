@@ -198,8 +198,8 @@ func (a *App) startup(ctx context.Context) {
 	}()
 
 	// Notify frontend if certificate installation is needed.
-	if certErr == nil && (newlyGenerated || !cert.IsCertInstalled(certPaths.Cert)) {
-		wailsruntime.EventsEmit(a.ctx, "cert:install_needed", cert.GetInfo(certPaths.Cert))
+	if certErr == nil && (newlyGenerated || !cert.IsCertInstalled(certPaths.CACert)) {
+		wailsruntime.EventsEmit(a.ctx, "cert:install_needed", cert.GetInfo(certPaths))
 	}
 
 	// UDP server.
@@ -445,17 +445,17 @@ func (a *App) SaveAdvanced(udpEnabled bool, udpPort int, minimapEnabled bool) er
 
 // GetCertInfo returns the current certificate state.
 func (a *App) GetCertInfo() cert.Info {
-	return cert.GetInfo(a.certPaths.Cert)
+	return cert.GetInfo(a.certPaths)
 }
 
-// IsCertInstalled reports whether the certificate is trusted by the OS.
+// IsCertInstalled reports whether the Root CA is trusted by the OS.
 func (a *App) IsCertInstalled() bool {
-	return cert.IsCertInstalled(a.certPaths.Cert)
+	return cert.IsCertInstalled(a.certPaths.CACert)
 }
 
-// InstallCert installs the certificate into the system trust store.
+// InstallCert installs the Root CA into the system trust store.
 func (a *App) InstallCert() cert.InstallResult {
-	return cert.Install(a.certPaths.Cert)
+	return cert.Install(a.certPaths.CACert)
 }
 
 // mapKeys returns the keys of a map for debug logging.

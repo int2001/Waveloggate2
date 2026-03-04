@@ -1,6 +1,7 @@
 export namespace cert {
 	
 	export class Info {
+	    caCertPath: string;
 	    certPath: string;
 	    exists: boolean;
 	    isInstalled: boolean;
@@ -11,6 +12,7 @@ export namespace cert {
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.caCertPath = source["caCertPath"];
 	        this.certPath = source["certPath"];
 	        this.exists = source["exists"];
 	        this.isInstalled = source["isInstalled"];
