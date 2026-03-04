@@ -10,6 +10,10 @@ export function DeleteProfile(arg1) {
   return window['go']['main']['App']['DeleteProfile'](arg1);
 }
 
+export function GetCertInfo() {
+  return window['go']['main']['App']['GetCertInfo']();
+}
+
 export function GetConfig() {
   return window['go']['main']['App']['GetConfig']();
 }
@@ -24,6 +28,14 @@ export function GetStations(arg1, arg2) {
 
 export function GetUDPStatus() {
   return window['go']['main']['App']['GetUDPStatus']();
+}
+
+export function InstallCert() {
+  return window['go']['main']['App']['InstallCert']();
+}
+
+export function IsCertInstalled() {
+  return window['go']['main']['App']['IsCertInstalled']();
 }
 
 export function RenameProfile(arg1, arg2) {

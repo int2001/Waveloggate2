@@ -146,3 +146,10 @@ func (h *Hub) ListenAndServe(addr string) error {
 	mux.Handle("/", h)
 	return http.ListenAndServe(addr, mux)
 }
+
+// ListenAndServeTLS starts a secure WebSocket (WSS) server on the given address.
+func (h *Hub) ListenAndServeTLS(addr, certFile, keyFile string) error {
+	mux := http.NewServeMux()
+	mux.Handle("/", h)
+	return http.ListenAndServeTLS(addr, certFile, keyFile, mux)
+}

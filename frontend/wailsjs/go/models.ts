@@ -1,3 +1,40 @@
+export namespace cert {
+	
+	export class Info {
+	    certPath: string;
+	    exists: boolean;
+	    isInstalled: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new Info(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.certPath = source["certPath"];
+	        this.exists = source["exists"];
+	        this.isInstalled = source["isInstalled"];
+	    }
+	}
+	export class InstallResult {
+	    success: boolean;
+	    message: string;
+	    command: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new InstallResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.message = source["message"];
+	        this.command = source["command"];
+	    }
+	}
+
+}
+
 export namespace config {
 	
 	export class Profile {

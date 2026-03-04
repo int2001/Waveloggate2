@@ -3,6 +3,7 @@
   import { WindowSetSize, WindowSetMinSize, EventsOn, WindowSetPosition, WindowGetPosition } from "../wailsjs/runtime/runtime.js";
   import {
     GetConfig,
+    GetCertInfo,
     GetRotatorStatus,
     GetUDPStatus,
     RotatorSetFollow,
@@ -11,6 +12,7 @@
   import StatusTab from "./components/StatusTab.svelte";
   import ConfigTab from "./components/ConfigTab.svelte";
   import MiniMode from "./components/MiniMode.svelte";
+  import CertBanner from "./components/CertBanner.svelte";
 
   // ── Window constants ───────────────────────────────────────────────────────
   const WIDTH       = 430;
@@ -43,6 +45,7 @@
   let satAz         = null;
   let satEl         = null;
   let minimapEnabled = false;
+  let certInfo      = null;
 
   // ── Reactive mini-height ───────────────────────────────────────────────────
   $: miniHeight = rotatorEnabled
@@ -95,7 +98,7 @@
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
   let offRadio, offQso, offStatus, offRotPos, offRotStatus, offRotBearing,
-      offProfile, offRadioEnabled, offRotEnabled, offAdvanced;
+      offProfile, offRadioEnabled, offRotEnabled, offAdvanced, offCert;
 
   onMount(async () => {
     updateClock();
@@ -138,6 +141,7 @@
     offAdvanced = EventsOn("advanced:changed", (data) => {
       minimapEnabled = data?.minimapEnabled ?? false;
     });
+    offCert = EventsOn("cert:install_needed", (data) => { certInfo = data; });
 
     // Load initial state
     const cfg = await GetConfig();
@@ -153,6 +157,9 @@
 
     const adv = await GetUDPStatus();
     minimapEnabled = adv.minimapEnabled;
+
+    const ci = await GetCertInfo();
+    if (!ci.isInstalled) certInfo = ci;
 
     // Apply correct window size on startup
     if (miniMode) {
@@ -173,6 +180,7 @@
     if (offRotEnabled) offRotEnabled();
     if (offRadioEnabled) offRadioEnabled();
     if (offAdvanced)   offAdvanced();
+    if (offCert)       offCert();
   });
 </script>
 
@@ -215,6 +223,8 @@
         ><i class="fa-solid fa-compress text-xs"></i></button>
       </div>
     </header>
+
+    <CertBanner {certInfo} />
 
     <main class="flex-1 overflow-y-auto overflow-x-hidden">
       <div class:hidden={activeTab !== "status"}>

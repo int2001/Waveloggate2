@@ -4,6 +4,7 @@ go 1.23
 
 require (
 	github.com/gorilla/websocket v1.5.3
+	github.com/soheilhy/cmux v0.1.5
 	github.com/wailsapp/wails/v2 v2.11.0
 )
 

@@ -10,6 +10,7 @@ import (
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
+	"waveloggate/internal/cert"
 	"waveloggate/internal/config"
 	"waveloggate/internal/debug"
 	"waveloggate/internal/qsy"
@@ -24,14 +25,15 @@ const appVersion = "2.0.0"
 
 // App is the Wails application backend.
 type App struct {
-	ctx      context.Context
-	cfg      config.Config
-	udpSrv   *udp.Server
-	wsHub    *ws.Hub
-	qsySrv   *qsy.Server
-	poller   *radio.Poller
-	wlClient *wavelog.Client
-	rotator  *rotator.Client
+	ctx       context.Context
+	cfg       config.Config
+	certPaths cert.Paths
+	udpSrv    *udp.Server
+	wsHub     *ws.Hub
+	qsySrv    *qsy.Server
+	poller    *radio.Poller
+	wlClient  *wavelog.Client
+	rotator   *rotator.Client
 }
 
 // NewApp creates a new App.
@@ -163,15 +165,42 @@ func (a *App) startup(ctx context.Context) {
 	})
 	a.poller.Start(ctx)
 
-	// QSY server.
+	// TLS certificate.
+	certPaths, newlyGenerated, certErr := cert.Setup()
+	if certErr != nil {
+		a.emitStatus("TLS cert error: " + certErr.Error())
+	}
+	a.certPaths = certPaths
+
+	// QSY server — polyglot HTTP+HTTPS on :54321.
 	a.qsySrv = qsy.New(func(hz int64, mode string) error {
 		return a.poller.SetFreqMode(hz, mode)
 	})
 	go func() {
-		if err := a.qsySrv.ListenAndServe(":54321"); err != nil {
-			a.emitStatus("QSY server error: " + err.Error())
+		if certPaths.Cert != "" && certPaths.Key != "" {
+			if err := a.qsySrv.ListenAndServePolyglot(":54321", certPaths.Cert, certPaths.Key); err != nil {
+				a.emitStatus("QSY server error: " + err.Error())
+			}
+		} else {
+			if err := a.qsySrv.ListenAndServe(":54321"); err != nil {
+				a.emitStatus("QSY server error: " + err.Error())
+			}
 		}
 	}()
+
+	// WSS on :54323.
+	go func() {
+		if certPaths.Cert != "" && certPaths.Key != "" {
+			if err := a.wsHub.ListenAndServeTLS(":54323", certPaths.Cert, certPaths.Key); err != nil {
+				a.emitStatus("WSS server error: " + err.Error())
+			}
+		}
+	}()
+
+	// Notify frontend if certificate installation is needed.
+	if certErr == nil && (newlyGenerated || !cert.IsCertInstalled(certPaths.Cert)) {
+		wailsruntime.EventsEmit(a.ctx, "cert:install_needed", cert.GetInfo(certPaths.Cert))
+	}
 
 	// UDP server.
 	if cfg.UDPEnabled {
@@ -412,6 +441,21 @@ func (a *App) SaveAdvanced(udpEnabled bool, udpPort int, minimapEnabled bool) er
 		}
 	}
 	return nil
+}
+
+// GetCertInfo returns the current certificate state.
+func (a *App) GetCertInfo() cert.Info {
+	return cert.GetInfo(a.certPaths.Cert)
+}
+
+// IsCertInstalled reports whether the certificate is trusted by the OS.
+func (a *App) IsCertInstalled() bool {
+	return cert.IsCertInstalled(a.certPaths.Cert)
+}
+
+// InstallCert installs the certificate into the system trust store.
+func (a *App) InstallCert() cert.InstallResult {
+	return cert.Install(a.certPaths.Cert)
 }
 
 // mapKeys returns the keys of a map for debug logging.
