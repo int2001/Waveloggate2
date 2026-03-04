@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"waveloggate/internal/config"
+	"waveloggate/internal/debug"
 	"waveloggate/internal/wavelog"
 )
 
@@ -88,13 +89,17 @@ func (p *Poller) SetFreqMode(hz int64, mode string) error {
 	}
 
 	modes, _ := client.GetModes()
+	debug.Log("[QSY] requested mode=%q freq=%d available=%v", mode, hz, modes)
+
 	targetMode := SelectMode(mode, hz, modes)
+	debug.Log("[QSY] resolved targetMode=%q WavelogPmode=%v", targetMode, cfg.WavelogPmode)
 
 	setMode := ""
 	if cfg.WavelogPmode && targetMode != "" {
 		setMode = targetMode
 	}
 
+	debug.Log("[QSY] sending to radio: freq=%d mode=%q", hz, setMode)
 	return client.SetFreqMode(hz, setMode)
 }
 

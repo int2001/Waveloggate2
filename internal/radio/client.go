@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"waveloggate/internal/debug"
 )
 
 // RigStatus holds the current radio state.
@@ -160,13 +162,18 @@ func (c *FLRigClient) GetModes() ([]string, error) {
 	defer resp.Body.Close()
 
 	data, _ := io.ReadAll(resp.Body)
-	return extractXMLRPCArray(data), nil
+	debug.Log("[GetModes] raw response: %s", string(data))
+	modes := extractXMLRPCArray(data)
+	debug.Log("[GetModes] parsed modes: %v", modes)
+	return modes, nil
 }
 
 // extractXMLRPCArray extracts a string array from an XML-RPC response.
+// Handles both <value><string>X</string></value> and bare <value>X</value>.
 func extractXMLRPCArray(data []byte) []string {
 	dec := xml.NewDecoder(bytes.NewReader(data))
-	inString := false
+	inValue := false
+	hasStringChild := false
 	var result []string
 	var cur strings.Builder
 
@@ -177,19 +184,29 @@ func extractXMLRPCArray(data []byte) []string {
 		}
 		switch t := tok.(type) {
 		case xml.StartElement:
-			if t.Name.Local == "string" {
-				inString = true
+			if t.Name.Local == "value" {
+				inValue = true
+				hasStringChild = false
+				cur.Reset()
+			} else if t.Name.Local == "string" && inValue {
+				hasStringChild = true
 				cur.Reset()
 			}
 		case xml.EndElement:
-			if t.Name.Local == "string" {
-				inString = false
+			if t.Name.Local == "string" && inValue {
 				if s := strings.TrimSpace(cur.String()); s != "" {
 					result = append(result, s)
 				}
+			} else if t.Name.Local == "value" && inValue {
+				if !hasStringChild {
+					if s := strings.TrimSpace(cur.String()); s != "" {
+						result = append(result, s)
+					}
+				}
+				inValue = false
 			}
 		case xml.CharData:
-			if inString {
+			if inValue {
 				cur.Write(t)
 			}
 		}
@@ -307,8 +324,8 @@ func (c *HamlibClient) GetModes() ([]string, error) {
 
 // fallbackModes defines fallback chains for mode matching.
 var fallbackModes = map[string][]string{
-	"CW":   {"CW-L", "CW-R", "CWL", "CWR", "CW-U"},
-	"RTTY": {"RTTY-R", "RTTYR", "RTTY-L", "RTTY-U"},
+	"CW":   {"CW-U", "CW-R", "CWL", "CWR", "CW-L"},
+	"RTTY": {"RTTY-R", "RTTYR", "RTTY-U", "RTTY-L"},
 }
 
 // GetClosestMode finds the best match for a desired mode from available modes.
@@ -318,6 +335,7 @@ func GetClosestMode(desired string, available []string) string {
 	// Exact match.
 	for _, m := range available {
 		if strings.ToUpper(m) == upper {
+			debug.Log("[mode] exact match: %q", m)
 			return m
 		}
 	}
@@ -327,6 +345,7 @@ func GetClosestMode(desired string, available []string) string {
 		for _, fb := range fallbacks {
 			for _, m := range available {
 				if strings.ToUpper(m) == fb {
+					debug.Log("[mode] fallback match: %q -> %q", desired, m)
 					return m
 				}
 			}
@@ -336,10 +355,12 @@ func GetClosestMode(desired string, available []string) string {
 	// Prefix match.
 	for _, m := range available {
 		if strings.HasPrefix(strings.ToUpper(m), upper) {
+			debug.Log("[mode] prefix match: %q -> %q", desired, m)
 			return m
 		}
 	}
 
+	debug.Log("[mode] no match found for %q in %v", desired, available)
 	return ""
 }
 
