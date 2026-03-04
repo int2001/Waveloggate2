@@ -243,7 +243,16 @@ func (c *HamlibClient) GetStatus() (RigStatus, error) {
 	modeStr, _ := c.sendCmd("m\n")
 	s.Mode = strings.TrimSpace(modeStr)
 
-	// PTT, power, split, vfoB not supported in basic Hamlib mode.
+	splitStr, _ := c.sendCmd("s\n")
+	s.Split = strings.TrimSpace(splitStr) == "1"
+
+	if s.Split {
+		freqBStr, _ := c.sendCmd("i\n")
+		s.FreqB, _ = strconv.ParseFloat(strings.TrimSpace(freqBStr), 64)
+		modeBStr, _ := c.sendCmd("x\n")
+		s.ModeB = strings.TrimSpace(modeBStr)
+	}
+
 	return s, nil
 }
 

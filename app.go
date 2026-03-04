@@ -154,8 +154,10 @@ func (a *App) startup(ctx context.Context) {
 			Radio:     profile.WavelogRadioname,
 		}
 		if status.Split {
-			msg.FrequencyRx = int64(math.Round(status.FreqB))
-			msg.ModeRx = status.ModeB
+			msg.Frequency    = int64(math.Round(status.FreqB)) // TX
+			msg.Mode         = status.ModeB
+			msg.FrequencyRx  = int64(math.Round(status.FreqA)) // RX
+			msg.ModeRx       = status.Mode
 		}
 		a.wsHub.BroadcastStatus(msg)
 	})
