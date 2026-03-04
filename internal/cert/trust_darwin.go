@@ -1,6 +1,7 @@
 package cert
 
 import (
+	"crypto/sha1"
 	"encoding/base64"
 	"encoding/pem"
 	"fmt"
@@ -10,8 +11,8 @@ import (
 	"strings"
 )
 
-// IsCertInstalled reports whether the exact Root CA (matched by Subject Key ID)
-// is present in the macOS System Keychain.
+// IsCertInstalled reports whether the exact Root CA (matched by SHA-1 fingerprint)
+// is present in any macOS keychain (System or Login).
 func IsCertInstalled(caCertPath string) bool {
 	rawPEM, err := os.ReadFile(caCertPath)
 	if err != nil {
@@ -26,11 +27,13 @@ func IsCertInstalled(caCertPath string) bool {
 		return false
 	}
 
-	fp := fmt.Sprintf("%X", caCert.SubjectKeyId)
+	// security -Z prints "SHA-1 hash: AABBCC..." — match against that.
+	sum := sha1.Sum(caCert.Raw)
+	fp := fmt.Sprintf("%X", sum)
 
+	// Search all keychains (no keychain path argument = default search list).
 	out, err := exec.Command("/usr/bin/security", "find-certificate",
-		"-c", "WavelogGate CA", "-Z",
-		"/Library/Keychains/System.keychain").Output()
+		"-c", "WavelogGate CA", "-Z", "-a").Output()
 	if err != nil || len(out) == 0 {
 		return false
 	}
