@@ -1,6 +1,6 @@
 <script>
   import { onMount, onDestroy } from "svelte";
-  import { WindowSetSize, WindowSetMinSize, EventsOn } from "../wailsjs/runtime/runtime.js";
+  import { WindowSetSize, WindowSetMinSize, EventsOn, WindowSetPosition, WindowGetPosition } from "../wailsjs/runtime/runtime.js";
   import {
     GetConfig,
     GetRotatorStatus,
@@ -49,10 +49,16 @@
     ? (minimapEnabled ? MINI_MAP : MINI_ROT)
     : MINI_BASE;
 
+  async function setWindowSizeAnchored(width, height) {
+    const pos = await WindowGetPosition();
+    WindowSetSize(width, height);
+    WindowSetPosition(pos.x, pos.y);
+  }
+
   // Re-apply window size when height changes while in mini mode
   $: if (miniMode) {
     WindowSetMinSize(WIDTH, miniHeight);
-    WindowSetSize(WIDTH, miniHeight);
+    setWindowSizeAnchored(WIDTH, miniHeight);
   }
 
   // ── Window helpers ─────────────────────────────────────────────────────────
@@ -60,14 +66,14 @@
     miniMode = true;
     localStorage.setItem("ui.miniMode", "true");
     WindowSetMinSize(WIDTH, miniHeight);
-    WindowSetSize(WIDTH, miniHeight);
+    setWindowSizeAnchored(WIDTH, miniHeight);
   }
 
   function exitMiniMode() {
     miniMode = false;
     localStorage.setItem("ui.miniMode", "false");
     WindowSetMinSize(WIDTH, FULL_HEIGHT);
-    WindowSetSize(WIDTH, FULL_HEIGHT);
+    setWindowSizeAnchored(WIDTH, FULL_HEIGHT);
   }
 
   // ── Rotator actions ────────────────────────────────────────────────────────
