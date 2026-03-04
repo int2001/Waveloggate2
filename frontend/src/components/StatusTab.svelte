@@ -7,6 +7,9 @@
 
   export let freqMHz = "";
   export let mode = "";
+  export let split = false;
+  export let freqTxMHz = "";
+  export let modeTx = "";
   export let statusMsg = "";
   export let qsoResult = null;
   export let radioEnabled = false;
@@ -46,7 +49,7 @@
   </section>
 
   {#if radioEnabled}
-    <TrxDisplay {freqMHz} {mode} />
+    <TrxDisplay {freqMHz} {mode} {split} {freqTxMHz} {modeTx} />
   {/if}
   
   {#if rotatorEnabled}

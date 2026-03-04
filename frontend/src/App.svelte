@@ -28,6 +28,9 @@
   // ── Shared runtime state ───────────────────────────────────────────────────
   let freqMHz       = "";
   let mode          = "";
+  let split         = false;
+  let freqTxMHz     = "";
+  let modeTx        = "";
   let statusMsg     = "";
   let qsoResult     = null;
   let radioEnabled  = false;
@@ -94,8 +97,11 @@
 
     offRadio = EventsOn("radio:status", (data) => {
       if (data && data.freqMHz !== undefined) {
-        freqMHz = Number(data.freqMHz).toFixed(5);
-        mode = data.mode || "";
+        freqMHz   = Number(data.freqMHz).toFixed(5);
+        mode      = data.mode || "";
+        split     = data.split || false;
+        freqTxMHz = data.split ? Number(data.freqTxMHz).toFixed(5) : "";
+        modeTx    = data.split ? (data.modeTx || "") : "";
       }
     });
     offQso = EventsOn("qso:result", (data) => {
@@ -169,7 +175,7 @@
     <!-- ── MINI MODE ─────────────────────────────────────────────────────── -->
     <MiniMode
       {utcTime}
-      {freqMHz} {mode} {qsoResult}
+      {freqMHz} {mode} {split} {freqTxMHz} {modeTx} {qsoResult}
       {rotatorEnabled} {minimapEnabled}
       {rotConnected} {rotAz} {rotEl} {rotFollow}
       {hfAz} {satAz} {satEl}
@@ -207,7 +213,7 @@
     <main class="flex-1 overflow-y-auto overflow-x-hidden">
       <div class:hidden={activeTab !== "status"}>
         <StatusTab
-          {freqMHz} {mode} {statusMsg} {qsoResult}
+          {freqMHz} {mode} {split} {freqTxMHz} {modeTx} {statusMsg} {qsoResult}
           {radioEnabled} {rotatorEnabled}
           {rotConnected} {rotAz} {rotEl} {rotFollow}
           {hfAz} {satAz} {satEl}

@@ -138,8 +138,11 @@ func (a *App) startup(ctx context.Context) {
 	a.poller = radio.NewPoller(&profile, a.wlClient, func(status radio.RigStatus) {
 		// Emit to frontend.
 		wailsruntime.EventsEmit(a.ctx, "radio:status", map[string]interface{}{
-			"freqMHz": status.FreqA / 1_000_000,
-			"mode":    status.Mode,
+			"freqMHz":   status.FreqA / 1_000_000,
+			"mode":      status.Mode,
+			"split":     status.Split,
+			"freqTxMHz": status.FreqB / 1_000_000,
+			"modeTx":    status.ModeB,
 		})
 
 		// Broadcast to WebSocket clients.

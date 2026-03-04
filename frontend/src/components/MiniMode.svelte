@@ -5,6 +5,9 @@
   export let utcTime = "";
   export let freqMHz = "";
   export let mode = "";
+  export let split = false;
+  export let freqTxMHz = "";
+  export let modeTx = "";
   export let qsoResult = null;
   export let rotatorEnabled = false;
   export let minimapEnabled = false;
@@ -37,10 +40,14 @@
   <!-- Row 1: Frequency + Mode badge -->
   <div class="flex items-center gap-2 font-mono">
     {#if freqMHz}
+      {#if split}<span class="text-fg-muted text-2xs self-end mb-0.5">RX</span>{/if}
       <span class="text-accent-value text-xl font-bold leading-none">{freqMHz}</span>
       <span class="text-fg-muted text-2xs self-end mb-0.5">MHz</span>
     {:else}
       <span class="text-fg-dim text-xs italic">No radio data</span>
+    {/if}
+    {#if split}
+      <span class="bg-accent-orange/10 border border-accent-orange/40 text-accent-orange text-2xs font-bold px-1.5 py-0.5 rounded tracking-wider">SPLIT</span>
     {/if}
     {#if mode}
       <span class="ml-auto bg-surface-app border border-stroke-section text-accent-orange text-xs font-semibold px-2 py-0.5 rounded-md">
@@ -48,6 +55,18 @@
       </span>
     {/if}
   </div>
+  {#if split && freqTxMHz}
+  <div class="flex items-center gap-2 font-mono">
+    <span class="text-fg-muted text-2xs self-end mb-0.5">TX</span>
+    <span class="text-accent-value text-xl font-bold leading-none">{freqTxMHz}</span>
+    <span class="text-fg-muted text-2xs self-end mb-0.5">MHz</span>
+    {#if modeTx}
+      <span class="ml-auto bg-surface-app border border-stroke-section text-accent-orange text-xs font-semibold px-2 py-0.5 rounded-md">
+        {modeTx}
+      </span>
+    {/if}
+  </div>
+  {/if}
 
   <!-- Row 2: QSO result (single compact line) -->
   <div class="text-2xs leading-tight min-h-[16px]">
