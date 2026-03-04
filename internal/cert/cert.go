@@ -145,12 +145,19 @@ func generate(p Paths) error {
 	return pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: certDER})
 }
 
+// loginKeychain returns the path to the current user's login keychain.
+func loginKeychain() string {
+	home, _ := os.UserHomeDir()
+	return filepath.Join(home, "Library", "Keychains", "login.keychain-db")
+}
+
 // IsCertInstalled reports whether the certificate is trusted by the OS.
 func IsCertInstalled(certPath string) bool {
 	switch runtime.GOOS {
 	case "darwin":
+		// Search the login keychain (no path = searches default keychains incl. login).
 		out, err := exec.Command("/usr/bin/security", "find-certificate", "-c", "127.0.0.1",
-			"-p", "/Library/Keychains/System.keychain").Output()
+			"-p", loginKeychain()).Output()
 		return err == nil && len(out) > 0
 	case "windows":
 		out, err := exec.Command("certutil", "-store", "Root").Output()
@@ -170,19 +177,21 @@ func IsCertInstalled(certPath string) bool {
 	}
 }
 
-// Install attempts to add the certificate to the system trust store.
+// Install attempts to add the certificate to the user trust store.
 func Install(certPath string) InstallResult {
 	switch runtime.GOOS {
 	case "darwin":
-		script := `do shell script "/usr/bin/security add-trusted-cert -d -p ssl -p basic -k /Library/Keychains/System.keychain '` +
-			certPath + `'" with administrator privileges`
-		cmd := exec.Command("/usr/bin/osascript", "-e", script)
+		// Add to the login keychain — macOS shows its own password/Touch ID prompt,
+		// no admin privileges required.
+		kc := loginKeychain()
+		cmd := exec.Command("/usr/bin/security", "add-trusted-cert",
+			"-d", "-p", "ssl", "-p", "basic", "-k", kc, certPath)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return InstallResult{
 				Success: false,
 				Message: "Installation failed: " + strings.TrimSpace(string(out)),
-				Command: "sudo security add-trusted-cert -d -p ssl -p basic -k /Library/Keychains/System.keychain \"" + certPath + "\"",
+				Command: "/usr/bin/security add-trusted-cert -d -p ssl -p basic -k \"" + kc + "\" \"" + certPath + "\"",
 			}
 		}
 		return InstallResult{Success: true, Message: "Certificate installed. Please restart your browser."}
