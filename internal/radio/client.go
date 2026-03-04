@@ -307,8 +307,8 @@ func (c *HamlibClient) GetModes() ([]string, error) {
 
 // fallbackModes defines fallback chains for mode matching.
 var fallbackModes = map[string][]string{
-	"CW":   {"CW-L", "CW-R", "CWL", "CWR"},
-	"RTTY": {"RTTY-R", "RTTYR"},
+	"CW":   {"CW-L", "CW-R", "CWL", "CWR", "CW-U"},
+	"RTTY": {"RTTY-R", "RTTYR", "RTTY-L", "RTTY-U"},
 }
 
 // GetClosestMode finds the best match for a desired mode from available modes.
