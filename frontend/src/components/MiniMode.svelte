@@ -25,13 +25,13 @@
 </script>
 
 <!-- Mini header: expand icon (left) + UTC clock (right) -->
-<header class="bg-surface-header flex items-center justify-between px-3 h-10 flex-shrink-0 border-b border-stroke-subtle">
+<header class="bg-surface-header flex items-center justify-end gap-2 px-3 h-10 flex-shrink-0 border-b border-stroke-subtle">
+  <div class="text-2xs text-fg-muted font-mono">{utcTime}</div>
   <button
     class="flex items-center justify-center w-6 h-6 rounded-md border border-stroke-base text-fg-bright hover:bg-surface-input transition-colors duration-150"
     title="Back to full view"
     on:click={() => dispatch("expand")}
   ><i class="fa-solid fa-expand text-xs"></i></button>
-  <div class="text-2xs text-fg-muted font-mono">{utcTime}</div>
 </header>
 
 <!-- Compact body -->
