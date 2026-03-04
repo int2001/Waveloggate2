@@ -149,7 +149,7 @@ func generate(p Paths) error {
 func IsCertInstalled(certPath string) bool {
 	switch runtime.GOOS {
 	case "darwin":
-		out, err := exec.Command("security", "find-certificate", "-c", "127.0.0.1",
+		out, err := exec.Command("/usr/bin/security", "find-certificate", "-c", "127.0.0.1",
 			"-p", "/Library/Keychains/System.keychain").Output()
 		return err == nil && len(out) > 0
 	case "windows":
@@ -174,9 +174,9 @@ func IsCertInstalled(certPath string) bool {
 func Install(certPath string) InstallResult {
 	switch runtime.GOOS {
 	case "darwin":
-		script := `do shell script "security add-trusted-cert -d -p ssl -p basic -k /Library/Keychains/System.keychain '` +
+		script := `do shell script "/usr/bin/security add-trusted-cert -d -p ssl -p basic -k /Library/Keychains/System.keychain '` +
 			certPath + `'" with administrator privileges`
-		cmd := exec.Command("osascript", "-e", script)
+		cmd := exec.Command("/usr/bin/osascript", "-e", script)
 		out, err := cmd.CombinedOutput()
 		if err != nil {
 			return InstallResult{

@@ -158,8 +158,18 @@
     const adv = await GetUDPStatus();
     minimapEnabled = adv.minimapEnabled;
 
-    const ci = await GetCertInfo();
-    if (!ci.isInstalled) certInfo = ci;
+    try {
+      const ci = await GetCertInfo();
+      if (!ci.isInstalled) certInfo = ci;
+    } catch (e) {
+      // bridge not ready yet — retry once after a short delay
+      setTimeout(async () => {
+        try {
+          const ci = await GetCertInfo();
+          if (!ci.isInstalled) certInfo = ci;
+        } catch (_) {}
+      }, 500);
+    }
 
     // Apply correct window size on startup
     if (miniMode) {
