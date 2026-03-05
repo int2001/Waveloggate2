@@ -25,7 +25,7 @@ func main() {
 	app := NewApp()
 
 	err := wails.Run(&options.App{
-		Title:            "WavelogGate v" + appVersion,
+		Title:            "WavelogGate " + appVersion,
 		Width:            430,
 		Height:           620,
 		MinWidth:         430,

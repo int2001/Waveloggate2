@@ -21,7 +21,7 @@ import (
 	"waveloggate/internal/ws"
 )
 
-const appVersion = "2.0.0"
+var appVersion = "vdev"
 
 // App is the Wails application backend.
 type App struct {
