@@ -50,6 +50,10 @@ export function IsCertInstalled() {
   return window['go']['main']['App']['IsCertInstalled']();
 }
 
+export function RefreshRadioModels() {
+  return window['go']['main']['App']['RefreshRadioModels']();
+}
+
 export function RenameProfile(arg1, arg2) {
   return window['go']['main']['App']['RenameProfile'](arg1, arg2);
 }

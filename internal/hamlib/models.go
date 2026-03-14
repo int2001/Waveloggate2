@@ -6,7 +6,16 @@
 //	rigctld --list | awk 'NR>2 && $1~/^[0-9]+$/ {print $0}'
 package hamlib
 
-import "strings"
+import (
+	"bufio"
+	"fmt"
+	"os/exec"
+	"strconv"
+	"strings"
+	"sync"
+
+	"waveloggate/internal/debug"
+)
 
 // RadioModel is a single entry from the Hamlib rig model list.
 type RadioModel struct {
@@ -15,23 +24,164 @@ type RadioModel struct {
 	Model        string `json:"model"`
 }
 
+// MarshalJSON implements custom JSON marshaling to include display label
+func (rm RadioModel) MarshalJSON() ([]byte, error) {
+	// Create the display label: "ID Model"
+	displayLabel := fmt.Sprintf("%d %s", rm.ID, rm.Model)
+
+	// Build JSON manually to include the computed label
+	return []byte(fmt.Sprintf(`{"id":%d,"manufacturer":"%s","model":"%s","label":"%s","value":"%s"}`,
+		rm.ID, rm.Manufacturer, rm.Model, displayLabel, displayLabel)), nil
+}
+
+// Dynamic model list cache
+var (
+	cachedModels     []RadioModel
+	cachedModelsOnce sync.Once
+	cachedModelsErr  error
+)
+
+// getDynamicModels attempts to get the actual model list from the installed rigctld.
+// Returns (models, nil) on success, (nil, error) if rigctld not available.
+func getDynamicModels() ([]RadioModel, error) {
+	// Try to find rigctld binary
+	rigctldPath, err := RigctldPath()
+	if err != nil {
+		// rigctld not found, use hardcoded fallback
+		return nil, fmt.Errorf("rigctld not found: %w", err)
+	}
+
+	// Run rigctld --list to get actual model list
+	cmd := exec.Command(rigctldPath, "--list")
+	output, err := cmd.Output()
+	if err != nil {
+		// rigctld exists but --list failed, use hardcoded fallback
+		return nil, fmt.Errorf("rigctld --list failed: %w", err)
+	}
+
+	// Parse the output
+	// Format: "ID  Manufacturer  Model"
+	// Example: "1    Hamlib  Dummy"
+	models := parseRigctldList(string(output))
+	if len(models) == 0 {
+		// Parsing failed or empty list, use fallback
+		return nil, fmt.Errorf("no models found in rigctld --list output")
+	}
+
+	return models, nil
+}
+
+// parseRigctldList parses the output from "rigctld --list"
+func parseRigctldList(output string) []RadioModel {
+	var models []RadioModel
+
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// Skip header lines and empty lines
+		if line == "" || strings.HasPrefix(line, "Model") || strings.HasPrefix(line, "---") || strings.HasPrefix(line, "Rig") {
+			continue
+		}
+
+		// Split by whitespace and handle variable column count
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
+			continue // Need at least ID, Manufacturer, Model
+		}
+
+		// First field is ID
+		id, err := strconv.Atoi(fields[0])
+		if err != nil {
+			continue
+		}
+
+		// Second field is Manufacturer (or sometimes Model if no Manufacturer)
+		// Third field is Model (or might be more columns)
+
+		// Heuristic: If field[1] looks like a model name (contains numbers/letters) and field[2] looks like version/date, then field[1] is likely Model
+		// Otherwise field[1] is Manufacturer, field[2] is Model
+
+		var manufacturer, model string
+
+		// Check if we have a version-like string in fields[2] (contains date/version pattern)
+		if len(fields) >= 4 && (strings.Contains(fields[2], ".") || strings.Contains(fields[2], "Stable") || strings.Contains(fields[2], "RIG_MODEL")) {
+			// Format: ID Model version... (no manufacturer column)
+			model = fields[1]
+			manufacturer = "Unknown"
+		} else {
+			// Format: ID Manufacturer Model...
+			manufacturer = fields[1]
+			model = fields[2]
+		}
+
+		// Clean up model name (might have trailing stuff)
+		model = strings.Split(model, " ")[0]
+
+		models = append(models, RadioModel{
+			ID:           id,
+			Manufacturer: manufacturer,
+			Model:        model,
+		})
+	}
+
+	return models
+}
+
+// getModelList returns the model list, trying dynamic first, then falling back to hardcoded.
+func getModelList() []RadioModel {
+	var models []RadioModel
+	var err error
+
+	// Try to get dynamic models (with caching)
+	cachedModelsOnce.Do(func() {
+		models, err = getDynamicModels()
+		if err != nil {
+			// Fall back to hardcoded list
+			debug.Log("[HAMLIB] Using fallback model list: %v", err)
+			cachedModels = allModels
+			cachedModelsErr = nil
+		} else {
+			debug.Log("[HAMLIB] Using dynamic model list from rigctld: %d models", len(models))
+			cachedModels = models
+			cachedModelsErr = nil
+		}
+	})
+
+	return cachedModels
+}
+
 // SearchModels returns all models whose manufacturer or model name contains q
-// (case-insensitive). An empty query returns the full list.
+// (case-insensitive). An empty query returns the full list (resets search).
 func SearchModels(q string) []RadioModel {
+	// Always get fresh model list for empty query (reset behavior)
 	if q == "" {
-		result := make([]RadioModel, len(allModels))
-		copy(result, allModels)
+		models := getModelList()
+		result := make([]RadioModel, len(models))
+		copy(result, models)
 		return result
 	}
+
+	// Non-empty query: filter the model list
 	q = strings.ToLower(q)
+	models := getModelList()
 	var out []RadioModel
-	for _, m := range allModels {
+	for _, m := range models {
 		if strings.Contains(strings.ToLower(m.Manufacturer), q) ||
 			strings.Contains(strings.ToLower(m.Model), q) {
 			out = append(out, m)
 		}
 	}
 	return out
+}
+
+// InvalidateModelCache clears the cached model list, forcing a refresh on next SearchModels call.
+// Useful when rigctld is updated or reinstalled.
+func InvalidateModelCache() {
+	cachedModelsOnce = sync.Once{}
+	cachedModels = nil
+	cachedModelsErr = nil
+	debug.Log("[HAMLIB] Model cache invalidated")
 }
 
 // allModels is the embedded Hamlib model list.

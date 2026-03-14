@@ -552,8 +552,17 @@ func (a *App) DownloadHamlib() DownloadResult {
 }
 
 // SearchRadioModels returns hamlib radio models matching the query string.
+// An empty query string returns all available models (resets any previous search).
 func (a *App) SearchRadioModels(q string) []hamlib.RadioModel {
 	return hamlib.SearchModels(q)
+}
+
+// RefreshRadioModels refreshes the cached radio model list from the installed rigctld.
+// Useful after installing/updating hamlib or to reset the model enumeration.
+func (a *App) RefreshRadioModels() int {
+	hamlib.InvalidateModelCache()
+	models := hamlib.SearchModels("")
+	return len(models)
 }
 
 // GetSerialPorts returns available serial ports on the current platform.

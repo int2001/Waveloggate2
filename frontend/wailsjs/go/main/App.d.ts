@@ -30,6 +30,8 @@ export function InstallCert():Promise<cert.InstallResult>;
 
 export function IsCertInstalled():Promise<boolean>;
 
+export function RefreshRadioModels():Promise<number>;
+
 export function RenameProfile(arg1:number,arg2:string):Promise<void>;
 
 export function RotatorPark():Promise<void>;

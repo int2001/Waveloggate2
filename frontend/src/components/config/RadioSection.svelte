@@ -31,6 +31,8 @@
   let showAdvancedSerial = false;
   let startStopBusy = false;
   let selectedModelLabel = "";
+  let previousModelLabel = ""; // Track previous model for Escape key
+  let previousModelId = null;   // Track previous model ID for restoration
 
   // "internal" radio type means managed rigctld.
   $: hamlibManaged = radioType === "internal";
@@ -49,7 +51,11 @@
     if (profile.hamlib_model) {
       const all = await SearchRadioModels("");
       const match = all.find((m) => m.id === profile.hamlib_model);
-      if (match) selectedModelLabel = `${match.manufacturer} ${match.model}`;
+      if (match) {
+        selectedModelLabel = match.label;
+        previousModelLabel = selectedModelLabel;
+        previousModelId = match.id;
+      }
     }
   }
 
@@ -91,10 +97,31 @@
   }
 
   function selectModel(m) {
-    selectedModelLabel = `${m.manufacturer} ${m.model}`;
+    // Store previous model before selecting new one
+    if (previousModelId !== null) {
+      previousModelLabel = selectedModelLabel;
+    }
+
+    selectedModelLabel = m.label;
+    previousModelId = m.id;
     modelQuery = "";
     modelDropdownOpen = false;
     dispatch("fieldchange", { key: "hamlib_model", value: m.id });
+  }
+
+  function onModelKeydown(e) {
+    if (e.key === "Escape") {
+      // Restore previous model when Escape is pressed
+      if (previousModelLabel) {
+        selectedModelLabel = previousModelLabel;
+        modelQuery = "";
+        modelDropdownOpen = false;
+        // Also restore the actual model value
+        if (previousModelId !== null) {
+          dispatch("fieldchange", { key: "hamlib_model", value: previousModelId });
+        }
+      }
+    }
   }
 
   async function startManaged() {
@@ -305,18 +332,17 @@
               on:input={onModelInput}
               on:focus={(e) => { modelQuery = ""; searchModels(""); }}
               on:blur={() => setTimeout(() => { modelDropdownOpen = false; }, 150)}
+              on:keydown={onModelKeydown}
               autocomplete="off"
             />
             {#if modelDropdownOpen}
               <div class="absolute top-full left-0 right-0 z-50 bg-surface-card border border-stroke-section rounded shadow-lg max-h-48 overflow-y-auto text-xs">
                 {#each modelResults.slice(0, 50) as m}
                   <button
-                    class="w-full text-left px-2 py-1 hover:bg-surface-section flex gap-2"
+                    class="w-full text-left px-2 py-1 hover:bg-surface-section"
                     on:mousedown={() => selectModel(m)}
                   >
-                    <span class="text-fg-muted w-10 flex-shrink-0 text-right">{m.id}</span>
-                    <span class="text-fg-bright">{m.manufacturer}</span>
-                    <span class="text-fg-label">{m.model}</span>
+                    <span class="text-fg-bright">{m.label}</span>
                   </button>
                 {/each}
                 {#if modelResults.length > 50}
