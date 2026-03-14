@@ -3,8 +3,10 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // Profile holds per-profile configuration.
@@ -172,4 +174,37 @@ func (c *Config) ActiveProfile() Profile {
 		return c.Profiles[c.Profile]
 	}
 	return defaultProfile()
+}
+
+// ValidateURL checks if a URL string has valid format for Wavelog API.
+// This is a fast, non-blocking validation that only checks format, not connectivity.
+// Returns (isValid, warningMessage) - warningMessage is empty if valid.
+func ValidateURL(urlStr string) (bool, string) {
+	// Check 1: Empty URL (most common issue)
+	if strings.TrimSpace(urlStr) == "" {
+		return false, "Wavelog URL is empty - please configure your Wavelog server URL"
+	}
+
+	// Check 2: Missing protocol
+	if !strings.HasPrefix(urlStr, "http://") && !strings.HasPrefix(urlStr, "https://") {
+		return false, "URL must start with http:// or https://"
+	}
+
+	// Check 3: Invalid URL format
+	parsedURL, err := url.Parse(urlStr)
+	if err != nil {
+		return false, fmt.Sprintf("Invalid URL format: %v", err)
+	}
+
+	// Check 4: Missing host
+	if parsedURL.Host == "" {
+		return false, "URL is missing host/domain (e.g., http://wavelog.example.com)"
+	}
+
+	// Check 5: Localhost warning (info only, not an error)
+	if parsedURL.Host == "localhost" || strings.HasPrefix(parsedURL.Host, "127.0.0.1") {
+		return true, "Using localhost - make sure Wavelog server is running"
+	}
+
+	return true, ""
 }

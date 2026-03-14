@@ -55,6 +55,14 @@ func (a *App) startup(ctx context.Context) {
 
 	profile := cfg.ActiveProfile()
 
+	// Validate Wavelog URL configuration (fast, non-blocking check).
+	if valid, warning := config.ValidateURL(profile.WavelogURL); !valid {
+		a.emitStatus("Configuration Error: " + warning)
+	} else if warning != "" {
+		// URL is valid but has informational warning (e.g., localhost)
+		a.emitStatus("Notice: " + warning)
+	}
+
 	// Wavelog client.
 	a.wlClient = wavelog.New(&profile, appVersion)
 
@@ -267,6 +275,18 @@ func (a *App) SaveConfig(cfg config.Config) config.Config {
 
 	// Update subsystems with new profile.
 	profile := cfg.ActiveProfile()
+
+	// Validate Wavelog URL when config is saved.
+	if valid, warning := config.ValidateURL(profile.WavelogURL); !valid {
+		a.emitStatus("Configuration Error: " + warning)
+	} else if warning != "" {
+		// URL is valid but has informational warning
+		a.emitStatus("Notice: " + warning)
+	} else {
+		// Clear any previous URL-related warnings
+		a.emitStatus("")
+	}
+
 	a.wlClient.UpdateProfile(&profile)
 	a.poller.UpdateConfig(&profile)
 	a.rotator.UpdateProfile(profile)
