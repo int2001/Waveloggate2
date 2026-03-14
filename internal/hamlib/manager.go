@@ -27,12 +27,13 @@ const (
 
 // Manager manages the lifecycle of a rigctld child process.
 type Manager struct {
-	mu        sync.Mutex
-	cmd       *exec.Cmd
-	state     State
-	lastMsg   string
-	cancelMon context.CancelFunc
-	cfg       config.Profile
+	mu          sync.Mutex
+	cmd         *exec.Cmd
+	processDone chan struct{} // closed by the sole cmd.Wait() goroutine; nil when no process
+	state       State
+	lastMsg     string
+	cancelMon   context.CancelFunc
+	cfg         config.Profile
 
 	// OnStatus is called on every state transition.
 	// running=true means rigctld is accepting connections.
@@ -111,11 +112,13 @@ func (m *Manager) Start(cfg config.Profile) error {
 	}
 	oldCmd := m.cmd
 	m.cmd = nil
+	oldProcessDone := m.processDone
+	m.processDone = nil
 	m.cfg = cfg
 	m.mu.Unlock()
 
-	// Terminate the old process OUTSIDE the lock (Wait can block up to 3 s).
-	stopCmd(oldCmd)
+	// Terminate the old process OUTSIDE the lock (Wait can block up to 5 s).
+	stopCmd(oldCmd, oldProcessDone)
 
 	// Find the rigctld binary (filesystem stat — no lock needed).
 	rigctldPath, err := RigctldPath()
@@ -154,9 +157,19 @@ func (m *Manager) Start(cfg config.Profile) error {
 
 	monCtx, cancel := context.WithCancel(context.Background())
 
+	// processDone is closed by the sole cmd.Wait() goroutine below.
+	// All other code (stopCmd, monitor) only reads this channel — they never
+	// call cmd.Wait() themselves, which prevents the double-Wait race.
+	processDone := make(chan struct{})
+	go func() {
+		cmd.Wait()
+		close(processDone)
+	}()
+
 	// Re-acquire lock only to update stored state.
 	m.mu.Lock()
 	m.cmd = cmd
+	m.processDone = processDone
 	m.cancelMon = cancel
 	m.setState(StateStarting, "Starting…")
 	m.mu.Unlock()
@@ -177,7 +190,7 @@ func (m *Manager) Start(cfg config.Profile) error {
 	}()
 
 	// Monitor goroutine: wait for readiness then watch for process exit.
-	go m.monitor(monCtx, cmd, cfg, stderrLines)
+	go m.monitor(monCtx, cmd, cfg, stderrLines, processDone)
 	return nil
 }
 
@@ -191,6 +204,8 @@ func (m *Manager) Stop() {
 	}
 	cmd := m.cmd
 	m.cmd = nil
+	processDone := m.processDone
+	m.processDone = nil
 	wasRunning := m.state != StateStopped
 	m.state = StateStopped
 	m.lastMsg = ""
@@ -200,8 +215,8 @@ func (m *Manager) Stop() {
 		m.notify(false, "")
 	}
 
-	// Terminate and wait OUTSIDE the lock (can block up to 3 s).
-	stopCmd(cmd)
+	// Terminate and wait OUTSIDE the lock (can block up to 5 s).
+	stopCmd(cmd, processDone)
 }
 
 // Restart stops and then starts rigctld with the current profile config.
@@ -213,26 +228,36 @@ func (m *Manager) Restart() error {
 	return m.Start(cfg)
 }
 
-// stopCmd terminates cmd and waits for it to exit (max 3 s). Safe to call with nil.
-func stopCmd(cmd *exec.Cmd) {
+// stopCmd sends a termination signal to cmd and waits for the process to exit
+// via processDone (which is closed by the sole cmd.Wait() goroutine started in
+// Start). It never calls cmd.Wait() itself to prevent the double-Wait race.
+// Safe to call with nil arguments.
+func stopCmd(cmd *exec.Cmd, processDone <-chan struct{}) {
 	if cmd == nil || cmd.Process == nil {
 		return
 	}
 	_ = terminateProcess(cmd.Process)
-	done := make(chan struct{})
-	go func() { cmd.Wait(); close(done) }()
+	if processDone == nil {
+		return
+	}
 	select {
-	case <-done:
-		// Process exited cleanly
+	case <-processDone:
+		// Process exited cleanly.
 	case <-time.After(5 * time.Second):
-		// Increased timeout from 3 to 5 seconds for Windows serial port release
-		// Serial ports can take longer to release on Windows, especially with USB drivers
+		// Serial ports can take longer to release on Windows with USB drivers;
+		// force-kill and give the Wait goroutine a moment to observe the exit.
 		_ = cmd.Process.Kill()
+		select {
+		case <-processDone:
+		case <-time.After(2 * time.Second):
+		}
 	}
 }
 
 // monitor waits for TCP readiness then watches for process exit.
-func (m *Manager) monitor(ctx context.Context, cmd *exec.Cmd, cfg config.Profile, stderrLines <-chan string) {
+// processDone is closed by the sole cmd.Wait() goroutine started in Start();
+// monitor never calls cmd.Wait() itself.
+func (m *Manager) monitor(ctx context.Context, cmd *exec.Cmd, cfg config.Profile, stderrLines <-chan string, processDone <-chan struct{}) {
 	addr := net.JoinHostPort(cfg.HamlibHost, cfg.HamlibPort)
 	if cfg.HamlibHost == "" {
 		addr = net.JoinHostPort("127.0.0.1", cfg.HamlibPort)
@@ -242,9 +267,18 @@ func (m *Manager) monitor(ctx context.Context, cmd *exec.Cmd, cfg config.Profile
 	// Windows can have slower startup due to Defender/SmartScreen checks.
 	ready := waitForPort(ctx, addr, 15*time.Second)
 	if !ready {
+		// If the context was cancelled this is an intentional Stop/Restart —
+		// don't overwrite the StateStopped set by Stop().
+		select {
+		case <-ctx.Done():
+			_ = cmd.Process.Kill()
+			return
+		default:
+		}
+
 		// Collect any error lines already buffered.
 		var stderrBuf []string
-		drainLoop:
+	drainLoop:
 		for {
 			select {
 			case line, ok := <-stderrLines:
@@ -276,19 +310,24 @@ func (m *Manager) monitor(ctx context.Context, cmd *exec.Cmd, cfg config.Profile
 		m.mu.Lock()
 		m.setState(StateError, msg)
 		m.mu.Unlock()
-		cmd.Process.Kill()
+		_ = cmd.Process.Kill()
 		return
 	}
 
+	// Guard against a Stop() that raced with waitForPort completing.
 	m.mu.Lock()
+	select {
+	case <-ctx.Done():
+		m.mu.Unlock()
+		return
+	default:
+	}
 	m.setState(StateRunning, "Running")
 	m.mu.Unlock()
 
-	// Drain remaining stderr lines.
+	// Watch for stderr lines and process exit. processDone is closed by the
+	// sole cmd.Wait() goroutine — no Wait call here.
 	var lastStderr string
-	exitCh := make(chan error, 1)
-	go func() { exitCh <- cmd.Wait() }()
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -297,7 +336,7 @@ func (m *Manager) monitor(ctx context.Context, cmd *exec.Cmd, cfg config.Profile
 			if ok {
 				lastStderr = line
 			}
-		case exitErr := <-exitCh:
+		case <-processDone:
 			select {
 			case <-ctx.Done():
 				// Expected stop — don't report error.
@@ -307,8 +346,6 @@ func (m *Manager) monitor(ctx context.Context, cmd *exec.Cmd, cfg config.Profile
 			msg := "rigctld exited unexpectedly"
 			if lastStderr != "" {
 				msg = interpretStderr(lastStderr, cfg)
-			} else if exitErr != nil {
-				msg = exitErr.Error()
 			}
 			m.mu.Lock()
 			m.state = StateError

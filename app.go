@@ -622,35 +622,38 @@ func (a *App) StopHamlib() {
 
 // startManagedHamlib stops any running instance and starts a new one if the
 // profile has HamlibManaged=true and HamlibEna=true.
+// The entire stop+start sequence runs in a goroutine so that callers on the
+// Wails RPC thread (SaveConfig, SwitchProfile) are never blocked by the
+// up-to-5-second process-exit wait.
 func (a *App) startManagedHamlib(profile config.Profile) {
 	if a.hamlibMgr == nil {
 		return
 	}
-	// Stop the old instance and wait for clean shutdown
-	// This prevents serial port race conditions where the new instance
-	// tries to start before the old one has released the port
-	a.hamlibMgr.Stop()
+	go func() {
+		// Stop waits for the old process to exit (up to 5 s on Windows) so
+		// the serial port is released before the new instance tries to open it.
+		a.hamlibMgr.Stop()
 
-	if profile.HamlibManaged && profile.HamlibEna {
-		// Validate serial port before attempting to start rigctld
+		if !profile.HamlibManaged || !profile.HamlibEna {
+			return
+		}
+
+		// Validate serial port before attempting to start rigctld.
 		if valid, warning := config.ValidateSerialPort(profile.HamlibDevice); !valid {
-			// Don't start rigctld with invalid device configuration
 			wailsruntime.EventsEmit(a.ctx, "hamlib:status", map[string]interface{}{
 				"running": false,
 				"message": "Configuration Error: " + warning,
 			})
 			return
 		}
-		// Start in goroutine to avoid blocking UI during startup
-		go func() {
-			if err := a.hamlibMgr.Start(profile); err != nil {
-				wailsruntime.EventsEmit(a.ctx, "hamlib:status", map[string]interface{}{
-					"running": false,
-					"message": err.Error(),
-				})
-			}
-		}()
-	}
+
+		if err := a.hamlibMgr.Start(profile); err != nil {
+			wailsruntime.EventsEmit(a.ctx, "hamlib:status", map[string]interface{}{
+				"running": false,
+				"message": err.Error(),
+			})
+		}
+	}()
 }
 
 // mapKeys returns the keys of a map for debug logging.

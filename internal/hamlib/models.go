@@ -34,11 +34,15 @@ func (rm RadioModel) MarshalJSON() ([]byte, error) {
 		rm.ID, rm.Manufacturer, rm.Model, displayLabel, displayLabel)), nil
 }
 
-// Dynamic model list cache
+// Dynamic model list cache.
+// modelCacheMu protects cachedOnce and cachedModels so that
+// InvalidateModelCache can replace them safely while getModelList may be
+// executing concurrently. We use *sync.Once (pointer) to avoid copying a
+// sync.Once that has already been used.
 var (
-	cachedModels     []RadioModel
-	cachedModelsOnce sync.Once
-	cachedModelsErr  error
+	modelCacheMu sync.Mutex
+	cachedOnce   = new(sync.Once)
+	cachedModels []RadioModel
 )
 
 // getDynamicModels attempts to get the actual model list from the installed rigctld.
@@ -130,25 +134,29 @@ func parseRigctldList(output string) []RadioModel {
 
 // getModelList returns the model list, trying dynamic first, then falling back to hardcoded.
 func getModelList() []RadioModel {
-	var models []RadioModel
-	var err error
+	// Read the current once pointer under the lock, then call Do outside the
+	// lock so that slow rigctld execution doesn't hold modelCacheMu.
+	modelCacheMu.Lock()
+	once := cachedOnce
+	modelCacheMu.Unlock()
 
-	// Try to get dynamic models (with caching)
-	cachedModelsOnce.Do(func() {
-		models, err = getDynamicModels()
+	once.Do(func() {
+		models, err := getDynamicModels()
+		modelCacheMu.Lock()
+		defer modelCacheMu.Unlock()
 		if err != nil {
-			// Fall back to hardcoded list
 			debug.Log("[HAMLIB] Using fallback model list: %v", err)
 			cachedModels = allModels
-			cachedModelsErr = nil
 		} else {
 			debug.Log("[HAMLIB] Using dynamic model list from rigctld: %d models", len(models))
 			cachedModels = models
-			cachedModelsErr = nil
 		}
 	})
 
-	return cachedModels
+	modelCacheMu.Lock()
+	result := cachedModels
+	modelCacheMu.Unlock()
+	return result
 }
 
 // SearchModels returns all models whose manufacturer or model name contains q
@@ -178,9 +186,10 @@ func SearchModels(q string) []RadioModel {
 // InvalidateModelCache clears the cached model list, forcing a refresh on next SearchModels call.
 // Useful when rigctld is updated or reinstalled.
 func InvalidateModelCache() {
-	cachedModelsOnce = sync.Once{}
+	modelCacheMu.Lock()
+	defer modelCacheMu.Unlock()
+	cachedOnce = new(sync.Once)
 	cachedModels = nil
-	cachedModelsErr = nil
 	debug.Log("[HAMLIB] Model cache invalidated")
 }
 

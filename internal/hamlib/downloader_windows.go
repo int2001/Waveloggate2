@@ -82,7 +82,7 @@ func listWindowsCOMPortsPowerShell() []string {
 
 	cmd := exec.CommandContext(ctx, "powershell",
 		"-NoProfile", "-NonInteractive",
-		"-Command", "[System.IO.Ports.SerialPort]::GetPortNames() | Select-Object @{Name='COM*'}")
+		"-Command", "[System.IO.Ports.SerialPort]::GetPortNames()")
 
 	output, err := cmd.Output()
 	if err != nil {
