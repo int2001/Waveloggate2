@@ -22,20 +22,24 @@ import (
 // This avoids opening any serial ports (which can block indefinitely on
 // Bluetooth/USB virtual COM ports).
 func listWindowsCOMPorts() []string {
-	debug.Log("[HAMLIB] GetSerialPorts called - starting registry query")
+	debug.Log("[HAMLIB] GetSerialPorts called - attempting registry query")
 
-	// Try registry query first with very short timeout (250ms) to prevent UI blocking
-	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
+	// Method 1: Try registry query with increased timeout (2 seconds)
+	// This is more reliable on slower systems or with antivirus scanning
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	out, err := exec.CommandContext(ctx,
 		"reg", "query", `HKLM\HARDWARE\DEVICEMAP\SERIALCOMM`,
 	).Output()
 	if err != nil {
-		debug.Log("[HAMLIB] COM port registry query failed (returning empty list): %v", err)
-		// Return empty list instead of nil - this prevents UI issues
-		// The error is normal if no COM ports exist or registry access is restricted
-		return []string{}
+		debug.Log("[HAMLIB] Registry query failed: %v", err)
+		// Provide more specific error message
+		if ctx.Err() == context.DeadlineExceeded {
+			debug.Log("[HAMLIB] Registry query timed out - system may be slow or have antivirus scanning")
+		}
+		// Try PowerShell fallback method
+		return listWindowsCOMPortsPowerShell()
 	}
 
 	debug.Log("[HAMLIB] Registry query succeeded, parsing results")
@@ -58,8 +62,52 @@ func listWindowsCOMPorts() []string {
 		}
 	}
 
-	debug.Log("[HAMLIB] Found %d COM ports: %v", len(ports), ports)
-	return ports
+	if len(ports) > 0 {
+		debug.Log("[HAMLIB] Found %d COM ports via registry: %v", len(ports), ports)
+		return ports
+	}
+
+	debug.Log("[HAMLIB] Registry query returned no ports, trying PowerShell fallback")
+	return listWindowsCOMPortsPowerShell()
+}
+
+// listWindowsCOMPortsPowerShell uses PowerShell as a fallback method to enumerate COM ports.
+// This can work when registry access is restricted.
+func listWindowsCOMPortsPowerShell() []string {
+	debug.Log("[HAMLIB] Trying PowerShell COM port enumeration")
+
+	// PowerShell command to get COM ports using WMI
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "powershell",
+		"-NoProfile", "-NonInteractive",
+		"-Command", "[System.IO.Ports.SerialPort]::GetPortNames() | Select-Object @{Name='COM*'}")
+
+	output, err := cmd.Output()
+	if err != nil {
+		debug.Log("[HAMLIB] PowerShell COM port query failed: %v", err)
+		// Return empty list - no COM ports or no access
+		return []string{}
+	}
+
+	var ports []string
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" && strings.HasPrefix(line, "COM") {
+			// PowerShell returns lines like "COM1" directly
+			ports = append(ports, line)
+		}
+	}
+
+	if len(ports) > 0 {
+		debug.Log("[HAMLIB] Found %d COM ports via PowerShell: %v", len(ports), ports)
+		return ports
+	}
+
+	debug.Log("[HAMLIB] Both registry and PowerShell methods failed or returned no ports")
+	return []string{}
 }
 
 const githubReleasesURL = "https://api.github.com/repos/Hamlib/Hamlib/releases/latest"

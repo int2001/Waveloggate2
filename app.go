@@ -567,7 +567,42 @@ func (a *App) RefreshRadioModels() int {
 
 // GetSerialPorts returns available serial ports on the current platform.
 func (a *App) GetSerialPorts() []string {
-	return hamlib.ListSerialPorts()
+	ports := hamlib.ListSerialPorts()
+
+	// Emit diagnostic event for COM port detection results
+	wailsruntime.EventsEmit(a.ctx, "serialports:detected", map[string]interface{}{
+		"count":   len(ports),
+		"ports":   ports,
+		"method":  "registry/powerShell",
+		"success": len(ports) > 0,
+	})
+
+	return ports
+}
+
+// TestSerialPortDetection tests COM port detection and returns detailed diagnostics.
+func (a *App) TestSerialPortDetection() map[string]interface{} {
+	result := make(map[string]interface{})
+
+	// Try to detect serial ports
+	ports := hamlib.ListSerialPorts()
+
+	result["ports"] = ports
+	result["count"] = len(ports)
+	result["success"] = len(ports) > 0
+	result["message"] = fmt.Sprintf("Found %d COM port(s)", len(ports))
+
+	if len(ports) == 0 {
+		result["troubleshooting"] = []string{
+			"1. Check Device Manager → Ports (COM & LPT) for available ports",
+			"2. Ensure serial port drivers are installed",
+			"3. Check Windows permissions (run as administrator?)",
+			"4. Try: reg query HKLM\\HARDWARE\\DEVICEMAP\\SERIALCOMM",
+			"5. Try: powershell [System.IO.Ports.SerialPort]::GetPortNames()",
+		}
+	}
+
+	return result
 }
 
 // StartHamlib starts (or restarts) the managed rigctld process for the active profile.

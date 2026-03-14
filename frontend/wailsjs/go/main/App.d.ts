@@ -50,4 +50,6 @@ export function StopHamlib():Promise<void>;
 
 export function SwitchProfile(arg1:number):Promise<void>;
 
+export function TestSerialPortDetection():Promise<Record<string, any>>;
+
 export function TestWavelog(arg1:config.Profile):Promise<main.TestResult>;
