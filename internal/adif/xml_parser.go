@@ -72,7 +72,9 @@ func ParseXML(data string) (map[string]string, error) {
 
 	// N1MM Logger+ is identified by the presence of <contestname>.
 	// It sends frequencies in units of 10 Hz; FLDigi sends plain Hz.
+	// N1MM uses "DX" as its generic non-contest mode; any other name means contest operation.
 	isN1MM := ci.ContestName != ""
+	isContest := isN1MM && ci.ContestName != "DX"
 
 	t := parseTimestamp(ci.Timestamp)
 	date := t.Format("20060102")
@@ -89,12 +91,6 @@ func ParseXML(data string) (map[string]string, error) {
 	mhz, _ := strconv.ParseFloat(freq, 64)
 	band := FreqToBand(mhz)
 
-	// N1MM sends rcvnr=0 when no serial number was exchanged; treat as absent.
-	rcvNr := ci.RcvNr
-	if isN1MM && rcvNr == "0" {
-		rcvNr = ""
-	}
-
 	fields := map[string]string{
 		"CALL":             ci.Call,
 		"MODE":             mode,
@@ -109,12 +105,18 @@ func ParseXML(data string) (map[string]string, error) {
 		"OPERATOR":         ci.Operator,
 		"COMMENT":          ci.Comment,
 		"TX_PWR":           ci.Power,
-		"STX":              ci.SntNr,
-		"SRX":              rcvNr,
 		"MYCALL":           ci.MyCall,
 		"GRIDSQUARE":       ci.GridSquare,
 		"STATION_CALLSIGN": ci.MyCall,
 		"BAND":             band,
+	}
+
+	// Serial numbers are only meaningful in contest operation.
+	if isContest {
+		fields["STX"] = ci.SntNr
+		if ci.RcvNr != "0" {
+			fields["SRX"] = ci.RcvNr
+		}
 	}
 
 	// Remove empty fields.
