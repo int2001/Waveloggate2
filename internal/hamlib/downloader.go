@@ -27,10 +27,32 @@ func rigctldName() string {
 	return "rigctld"
 }
 
+// commonPlatformPaths returns common installation paths for rigctld on the current platform.
+// This helps find installations that may not be in the GUI application's PATH (e.g., Homebrew on macOS).
+func commonPlatformPaths(executableName string) []string {
+	switch runtime.GOOS {
+	case "darwin":
+		// macOS: Homebrew installation paths for both Intel and Apple Silicon
+		return []string{
+			"/opt/homebrew/bin/" + executableName, // Apple Silicon
+			"/usr/local/bin/" + executableName,     // Intel Macs
+		}
+	case "linux":
+		// Linux: common installation paths
+		return []string{
+			"/usr/bin/" + executableName,
+			"/usr/local/bin/" + executableName,
+		}
+	default:
+		return nil
+	}
+}
+
 // RigctldPath returns the path to a usable rigctld binary.
 // Search order:
 //  1. ~/.config/WavelogGate/hamlib/rigctld[.exe]  (previously downloaded)
-//  2. rigctld in system PATH
+//  2. Common platform-specific installation paths (Homebrew on macOS, etc.)
+//  3. rigctld in system PATH
 //
 // Returns an error with diagnostics if not found.
 func RigctldPath() (string, error) {
@@ -48,7 +70,16 @@ func RigctldPath() (string, error) {
 		}
 	}
 
-	// 2. System PATH.
+	// 2. Common platform-specific installation paths.
+	for _, path := range commonPlatformPaths(name) {
+		if info, err := os.Stat(path); err == nil {
+			if info.Mode()&0o111 != 0 || runtime.GOOS == "windows" {
+				return path, nil
+			}
+		}
+	}
+
+	// 3. System PATH.
 	if path, err := exec.LookPath(name); err == nil {
 		return path, nil
 	}
@@ -58,6 +89,8 @@ func RigctldPath() (string, error) {
 	if dir != "" {
 		searchedPaths = append(searchedPaths, filepath.Join(dir, name))
 	}
+	// Add common platform paths to the searched paths for the error message
+	searchedPaths = append(searchedPaths, commonPlatformPaths(name)...)
 	if pathEnv := os.Getenv("PATH"); pathEnv != "" {
 		for _, p := range filepath.SplitList(pathEnv) {
 			searchedPaths = append(searchedPaths, filepath.Join(p, name))
