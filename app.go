@@ -582,11 +582,22 @@ func (a *App) startManagedHamlib(profile config.Profile) {
 	if a.hamlibMgr == nil {
 		return
 	}
-	a.hamlibMgr.Stop()
+	// Stop the old instance in a background goroutine to avoid blocking UI
+	// Stop() can block for up to 3 seconds waiting for process termination
+	go a.hamlibMgr.Stop()
+
 	if profile.HamlibManaged && profile.HamlibEna {
+		// Validate serial port before attempting to start rigctld
+		if valid, warning := config.ValidateSerialPort(profile.HamlibDevice); !valid {
+			// Don't start rigctld with invalid device configuration
+			wailsruntime.EventsEmit(a.ctx, "hamlib:status", map[string]interface{}{
+				"running": false,
+				"message": "Configuration Error: " + warning,
+			})
+			return
+		}
 		go func() {
 			if err := a.hamlibMgr.Start(profile); err != nil {
-				debug.Log("[HAMLIB] Start error: %v", err)
 				wailsruntime.EventsEmit(a.ctx, "hamlib:status", map[string]interface{}{
 					"running": false,
 					"message": err.Error(),

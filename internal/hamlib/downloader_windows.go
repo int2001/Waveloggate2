@@ -22,16 +22,23 @@ import (
 // This avoids opening any serial ports (which can block indefinitely on
 // Bluetooth/USB virtual COM ports).
 func listWindowsCOMPorts() []string {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	debug.Log("[HAMLIB] GetSerialPorts called - starting registry query")
+
+	// Try registry query first with very short timeout (250ms) to prevent UI blocking
+	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
 	defer cancel()
 
 	out, err := exec.CommandContext(ctx,
 		"reg", "query", `HKLM\HARDWARE\DEVICEMAP\SERIALCOMM`,
 	).Output()
 	if err != nil {
-		debug.Log("[HAMLIB] COM port registry query failed: %v", err)
-		return nil
+		debug.Log("[HAMLIB] COM port registry query failed (returning empty list): %v", err)
+		// Return empty list instead of nil - this prevents UI issues
+		// The error is normal if no COM ports exist or registry access is restricted
+		return []string{}
 	}
+
+	debug.Log("[HAMLIB] Registry query succeeded, parsing results")
 
 	// Each value line looks like:
 	//   \Device\Serial0    REG_SZ    COM1
@@ -50,6 +57,8 @@ func listWindowsCOMPorts() []string {
 			}
 		}
 	}
+
+	debug.Log("[HAMLIB] Found %d COM ports: %v", len(ports), ports)
 	return ports
 }
 

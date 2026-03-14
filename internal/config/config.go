@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 )
 
@@ -206,5 +207,57 @@ func ValidateURL(urlStr string) (bool, string) {
 		return true, "Using localhost - make sure Wavelog server is running"
 	}
 
+	return true, ""
+}
+
+// ValidateSerialPort checks if a serial port device string has valid format.
+// This is a fast, non-blocking validation that only checks format, not connectivity.
+// Returns (isValid, warningMessage) - warningMessage is empty if valid.
+func ValidateSerialPort(device string) (bool, string) {
+	// Empty check (most common issue)
+	trimmed := strings.TrimSpace(device)
+	if trimmed == "" {
+		return false, "Serial port (device) must not be empty"
+	}
+
+	// Windows-specific COM port validation
+	upperDevice := strings.ToUpper(trimmed)
+	if strings.HasPrefix(upperDevice, "COM") {
+		// Extract number part
+		numStr := strings.TrimPrefix(upperDevice, "COM")
+
+		// Check if there's something after COM
+		if numStr == "" {
+			return false, "COM port number is missing (e.g., COM1, COM2)"
+		}
+
+		// Must be numeric
+		num, err := strconv.Atoi(numStr)
+		if err != nil {
+			return false, fmt.Sprintf("COM port number must be numeric, got: %s", numStr)
+		}
+
+		// Range check (Windows supports COM1-COM256)
+		if num < 1 || num > 256 {
+			return false, fmt.Sprintf("COM port number must be 1-256, got: COM%d", num)
+		}
+
+		// Valid COM port format - note: we don't check if the port actually exists
+		// to avoid blocking operations. The actual rigctld will report if the port doesn't exist.
+		return true, ""
+	}
+
+	// Non-Windows: basic validation for device paths
+	// Linux: /dev/ttyUSB0, /dev/ttyACM0, /dev/ttyS0, etc.
+	// macOS: /dev/cu.usbserial*, /dev/tty.usbserial*, etc.
+	if strings.HasPrefix(trimmed, "/dev/") {
+		// Basic check: device path should have at least one more character after /dev/
+		if len(trimmed) > 5 {
+			return true, ""
+		}
+		return false, "Device path is too short (e.g., /dev/ttyUSB0)"
+	}
+
+	// Unknown format but not empty - might be valid on some systems
 	return true, ""
 }
