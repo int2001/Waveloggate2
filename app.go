@@ -591,9 +591,10 @@ func (a *App) startManagedHamlib(profile config.Profile) {
 	if a.hamlibMgr == nil {
 		return
 	}
-	// Stop the old instance in a background goroutine to avoid blocking UI
-	// Stop() can block for up to 3 seconds waiting for process termination
-	go a.hamlibMgr.Stop()
+	// Stop the old instance and wait for clean shutdown
+	// This prevents serial port race conditions where the new instance
+	// tries to start before the old one has released the port
+	a.hamlibMgr.Stop()
 
 	if profile.HamlibManaged && profile.HamlibEna {
 		// Validate serial port before attempting to start rigctld
@@ -605,6 +606,7 @@ func (a *App) startManagedHamlib(profile config.Profile) {
 			})
 			return
 		}
+		// Start in goroutine to avoid blocking UI during startup
 		go func() {
 			if err := a.hamlibMgr.Start(profile); err != nil {
 				wailsruntime.EventsEmit(a.ctx, "hamlib:status", map[string]interface{}{

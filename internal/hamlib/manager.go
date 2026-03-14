@@ -223,7 +223,10 @@ func stopCmd(cmd *exec.Cmd) {
 	go func() { cmd.Wait(); close(done) }()
 	select {
 	case <-done:
-	case <-time.After(3 * time.Second):
+		// Process exited cleanly
+	case <-time.After(5 * time.Second):
+		// Increased timeout from 3 to 5 seconds for Windows serial port release
+		// Serial ports can take longer to release on Windows, especially with USB drivers
 		_ = cmd.Process.Kill()
 	}
 }
