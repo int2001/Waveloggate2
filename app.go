@@ -7,6 +7,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"sync"
 
 	wailsruntime "github.com/wailsapp/wails/v2/pkg/runtime"
 
@@ -36,6 +37,11 @@ type App struct {
 	wlClient  *wavelog.Client
 	rotator   *rotator.Client
 	hamlibMgr *hamlib.Manager
+
+	// hamlibStartMu serialises stop+start sequences so that rapid profile
+	// switches (SaveConfig, SwitchProfile) cannot interleave and leave a
+	// stale process running.
+	hamlibStartMu sync.Mutex
 }
 
 // NewApp creates a new App.
@@ -503,6 +509,7 @@ type HamlibStatus struct {
 	Running      bool   `json:"running"`
 	StatusMsg    string `json:"statusMsg"`
 	InstallGuide string `json:"installGuide"`
+	CanDownload  bool   `json:"canDownload"`
 }
 
 // DownloadResult is returned by DownloadHamlib.
@@ -521,6 +528,7 @@ func (a *App) GetHamlibStatus() HamlibStatus {
 		Running:      a.hamlibMgr != nil && a.hamlibMgr.IsRunning(),
 		StatusMsg:    a.hamlibStatusMsg(),
 		InstallGuide: hamlib.InstallGuide(),
+		CanDownload:  hamlib.CanDownload(),
 	}
 }
 
@@ -567,42 +575,7 @@ func (a *App) RefreshRadioModels() int {
 
 // GetSerialPorts returns available serial ports on the current platform.
 func (a *App) GetSerialPorts() []string {
-	ports := hamlib.ListSerialPorts()
-
-	// Emit diagnostic event for COM port detection results
-	wailsruntime.EventsEmit(a.ctx, "serialports:detected", map[string]interface{}{
-		"count":   len(ports),
-		"ports":   ports,
-		"method":  "registry/powerShell",
-		"success": len(ports) > 0,
-	})
-
-	return ports
-}
-
-// TestSerialPortDetection tests COM port detection and returns detailed diagnostics.
-func (a *App) TestSerialPortDetection() map[string]interface{} {
-	result := make(map[string]interface{})
-
-	// Try to detect serial ports
-	ports := hamlib.ListSerialPorts()
-
-	result["ports"] = ports
-	result["count"] = len(ports)
-	result["success"] = len(ports) > 0
-	result["message"] = fmt.Sprintf("Found %d COM port(s)", len(ports))
-
-	if len(ports) == 0 {
-		result["troubleshooting"] = []string{
-			"1. Check Device Manager → Ports (COM & LPT) for available ports",
-			"2. Ensure serial port drivers are installed",
-			"3. Check Windows permissions (run as administrator?)",
-			"4. Try: reg query HKLM\\HARDWARE\\DEVICEMAP\\SERIALCOMM",
-			"5. Try: powershell [System.IO.Ports.SerialPort]::GetPortNames()",
-		}
-	}
-
-	return result
+	return hamlib.ListSerialPorts()
 }
 
 // StartHamlib starts (or restarts) the managed rigctld process for the active profile.
@@ -630,6 +603,12 @@ func (a *App) startManagedHamlib(profile config.Profile) {
 		return
 	}
 	go func() {
+		// Serialise concurrent calls: a rapid SaveConfig → SwitchProfile
+		// sequence must not let the second Stop() kill the process the first
+		// Start() just launched.
+		a.hamlibStartMu.Lock()
+		defer a.hamlibStartMu.Unlock()
+
 		// Stop waits for the old process to exit (up to 5 s on Windows) so
 		// the serial port is released before the new instance tries to open it.
 		a.hamlibMgr.Stop()

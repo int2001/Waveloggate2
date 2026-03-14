@@ -21,7 +21,7 @@
   $: radioEnabled = radioType !== "none";
 
   // ── Hamlib managed state ────────────────────────────────────────────────────
-  let hamlibStatus = { installed: false, version: "", running: false, statusMsg: "", installGuide: "" };
+  let hamlibStatus = { installed: false, version: "", running: false, statusMsg: "", installGuide: "", canDownload: false };
   let downloadProgress = -1; // -1 = idle, 0-100 = in progress
   let downloadMsg = "";
   let serialPorts = [];
@@ -290,12 +290,13 @@
               <div class="text-2xs text-fg-bright font-semibold">Install rigctld</div>
               <div class="text-2xs text-fg-muted whitespace-pre-wrap">{hamlibStatus.installGuide}</div>
               <div class="flex gap-2 flex-wrap">
-                <!-- Windows: download button -->
-                <button class="text-2xs py-0.5 px-2 border-stroke-accent text-fg-bright" on:click={triggerDownload}
-                  disabled={downloadProgress >= 0}>
-                  {downloadProgress >= 0 ? `Downloading… ${downloadProgress}%` : "Download rigctld"}
-                </button>
-                <!-- macOS/Linux: detect button -->
+                <!-- Windows only: automatic download -->
+                {#if hamlibStatus.canDownload}
+                  <button class="text-2xs py-0.5 px-2 border-stroke-accent text-fg-bright" on:click={triggerDownload}
+                    disabled={downloadProgress >= 0}>
+                    {downloadProgress >= 0 ? `Downloading… ${downloadProgress}%` : "Download rigctld"}
+                  </button>
+                {/if}
                 <button class="text-2xs py-0.5 px-2" on:click={detectInstall}>Detect</button>
               </div>
               {#if downloadProgress >= 0}

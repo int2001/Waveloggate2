@@ -90,10 +90,6 @@ export function SwitchProfile(arg1) {
   return window['go']['main']['App']['SwitchProfile'](arg1);
 }
 
-export function TestSerialPortDetection() {
-  return window['go']['main']['App']['TestSerialPortDetection']();
-}
-
 export function TestWavelog(arg1) {
   return window['go']['main']['App']['TestWavelog'](arg1);
 }

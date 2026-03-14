@@ -104,21 +104,30 @@ func RigctldPath() (string, error) {
 	)
 }
 
-// InstalledVersion returns a version string for the rigctld binary in the
-// managed directory, or an empty string if not present.
+// InstalledVersion returns a version string for the installed rigctld binary.
+// For the managed (downloaded) binary it reads the cached version.txt written
+// at download time. For system-installed binaries (Homebrew, apt, etc.) it
+// falls back to running "rigctld --version" which is fast and safe.
 func InstalledVersion() string {
+	// Prefer the cached version written during managed download.
 	dir, err := hamlibDir()
+	if err == nil {
+		data, err := os.ReadFile(filepath.Join(dir, "version.txt"))
+		if err == nil {
+			return strings.TrimSpace(string(data))
+		}
+	}
+
+	// Fall back to asking the system-installed binary.
+	path, err := exec.LookPath(rigctldName())
 	if err != nil {
 		return ""
 	}
-	versionFile := filepath.Join(dir, "version.txt")
-	data, err := os.ReadFile(versionFile)
+	out, err := exec.Command(path, "--version").Output()
 	if err != nil {
-		// version.txt absent — don't run the binary (could trigger Defender on
-		// Windows while the managed start goroutine is also launching it).
 		return ""
 	}
-	return strings.TrimSpace(string(data))
+	return strings.SplitN(strings.TrimSpace(string(out)), "\n", 2)[0]
 }
 
 // InstallGuide returns platform-appropriate installation instructions.
@@ -188,9 +197,3 @@ func listPortsGlob(patterns []string) []string {
 	return ports
 }
 
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
-}

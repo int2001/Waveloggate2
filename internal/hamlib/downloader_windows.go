@@ -110,6 +110,9 @@ func listWindowsCOMPortsPowerShell() []string {
 	return []string{}
 }
 
+// CanDownload reports whether automatic rigctld download is supported on this platform.
+func CanDownload() bool { return true }
+
 const githubReleasesURL = "https://api.github.com/repos/Hamlib/Hamlib/releases/latest"
 
 // Download fetches the latest Hamlib Windows x64 ZIP from GitHub Releases,

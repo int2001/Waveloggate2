@@ -8,6 +8,7 @@ package hamlib
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"strconv"
@@ -24,14 +25,16 @@ type RadioModel struct {
 	Model        string `json:"model"`
 }
 
-// MarshalJSON implements custom JSON marshaling to include display label
+// MarshalJSON implements custom JSON marshaling to include a display label.
 func (rm RadioModel) MarshalJSON() ([]byte, error) {
-	// Create the display label: "ID Model"
-	displayLabel := fmt.Sprintf("%d %s", rm.ID, rm.Model)
-
-	// Build JSON manually to include the computed label
-	return []byte(fmt.Sprintf(`{"id":%d,"manufacturer":"%s","model":"%s","label":"%s","value":"%s"}`,
-		rm.ID, rm.Manufacturer, rm.Model, displayLabel, displayLabel)), nil
+	label := fmt.Sprintf("%d %s", rm.ID, rm.Model)
+	return json.Marshal(struct {
+		ID           int    `json:"id"`
+		Manufacturer string `json:"manufacturer"`
+		Model        string `json:"model"`
+		Label        string `json:"label"`
+		Value        string `json:"value"`
+	}{rm.ID, rm.Manufacturer, rm.Model, label, label})
 }
 
 // Dynamic model list cache.

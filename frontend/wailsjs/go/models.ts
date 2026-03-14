@@ -189,6 +189,7 @@ export namespace main {
 	    running: boolean;
 	    statusMsg: string;
 	    installGuide: string;
+	    canDownload: boolean;
 	
 	    static createFrom(source: any = {}) {
 	        return new HamlibStatus(source);
@@ -201,6 +202,7 @@ export namespace main {
 	        this.running = source["running"];
 	        this.statusMsg = source["statusMsg"];
 	        this.installGuide = source["installGuide"];
+	        this.canDownload = source["canDownload"];
 	    }
 	}
 	export class RotatorStatus {

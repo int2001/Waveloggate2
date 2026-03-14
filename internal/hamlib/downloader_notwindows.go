@@ -17,3 +17,6 @@ func listWindowsCOMPorts() []string {
 func Download(_ context.Context, _ chan<- int) error {
 	return fmt.Errorf("automatic download is only available on Windows; %s", InstallGuide())
 }
+
+// CanDownload reports whether automatic rigctld download is supported on this platform.
+func CanDownload() bool { return false }
