@@ -25,7 +25,7 @@ type ContactInfo struct {
 	RcvNr       string   `xml:"rcvnr"`
 	MyCall      string   `xml:"mycall"`
 	GridSquare  string   `xml:"gridsquare"`
-	ContestName string   `xml:"contestname"` // N1MM only; used to detect frequency unit difference
+	ContestName string   `xml:"contestname"` // N1MM only; used to detect N1MM source and contest mode
 }
 
 var tsFormats = []string{
@@ -111,8 +111,9 @@ func ParseXML(data string) (map[string]string, error) {
 		"BAND":             band,
 	}
 
-	// Serial numbers are only meaningful in contest operation.
+	// Serial numbers and contest ID are only meaningful in contest operation.
 	if isContest {
+		fields["CONTEST_ID"] = ci.ContestName
 		fields["STX"] = ci.SntNr
 		if ci.RcvNr != "0" {
 			fields["SRX"] = ci.RcvNr
