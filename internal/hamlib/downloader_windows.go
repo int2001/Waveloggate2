@@ -213,35 +213,57 @@ func extractRigctld(zipPath, destPath string) error {
 	}
 	defer r.Close()
 
+	destDir := filepath.Dir(destPath)
+	foundRigctld := false
+
 	for _, f := range r.File {
-		// Look for rigctld.exe anywhere in the ZIP.
-		if strings.EqualFold(filepath.Base(f.Name), "rigctld.exe") {
+		baseName := filepath.Base(f.Name)
+
+		// Extract rigctld.exe and all DLL files
+		if strings.EqualFold(baseName, "rigctld.exe") || strings.EqualFold(filepath.Ext(baseName), ".dll") {
+			destPath := filepath.Join(destDir, baseName)
+
 			rc, err := f.Open()
 			if err != nil {
-				return fmt.Errorf("cannot read rigctld.exe from ZIP: %w", err)
+				return fmt.Errorf("cannot read %s from ZIP: %w", baseName, err)
 			}
-			defer rc.Close()
 
-			// Write to a temp file first so we don't overwrite a working binary on failure.
+			// Write to temp file first
 			tmp := destPath + ".tmp"
 			out, err := os.Create(tmp)
 			if err != nil {
+				rc.Close()
 				return fmt.Errorf("cannot create %s: %w", tmp, err)
 			}
+
 			if _, err := io.Copy(out, rc); err != nil {
 				out.Close()
+				rc.Close()
 				os.Remove(tmp)
-				return fmt.Errorf("cannot write rigctld.exe: %w", err)
+				return fmt.Errorf("cannot write %s: %w", baseName, err)
 			}
 			out.Close()
+			rc.Close()
+
+			// Rename temp file to final destination
 			if err := os.Rename(tmp, destPath); err != nil {
 				os.Remove(tmp)
-				return fmt.Errorf("cannot install rigctld.exe to %s: %w", destPath, err)
+				return fmt.Errorf("cannot install %s to %s: %w", baseName, destPath, err)
 			}
-			return nil
+
+			if strings.EqualFold(baseName, "rigctld.exe") {
+				foundRigctld = true
+			} else {
+				debug.Log("[HAMLIB] Extracted DLL: %s", baseName)
+			}
 		}
 	}
-	return fmt.Errorf("rigctld.exe not found inside ZIP (checked %d entries)", len(r.File))
+
+	if !foundRigctld {
+		return fmt.Errorf("rigctld.exe not found inside ZIP (checked %d entries)", len(r.File))
+	}
+
+	return nil
 }
 
 func reportProgress(ch chan<- int, pct int) {

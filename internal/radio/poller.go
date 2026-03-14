@@ -173,9 +173,10 @@ func buildClient(cfg *config.Profile) RadioClient {
 	switch {
 	case cfg.FlrigEna:
 		return NewFLRig(cfg.FlrigHost, cfg.FlrigPort)
-	case cfg.HamlibEna && !cfg.HamlibManaged:
-		// Only connect via TCP if hamlib is NOT managed (external mode)
-		// Internal mode (HamlibManaged=true) is handled by hamlib manager
+	case cfg.HamlibEna:
+		// Connect to rigctld via TCP for both internal (managed) and external modes
+		// Internal mode: hamlib manager starts rigctld, poller connects to it
+		// External mode: user runs rigctld manually, poller connects to it
 		return NewHamlib(cfg.HamlibHost, cfg.HamlibPort)
 	default:
 		return nil

@@ -235,8 +235,9 @@ func (m *Manager) monitor(ctx context.Context, cmd *exec.Cmd, cfg config.Profile
 		addr = net.JoinHostPort("127.0.0.1", cfg.HamlibPort)
 	}
 
-	// Wait for rigctld to start listening (5-second window).
-	ready := waitForPort(ctx, addr, 5*time.Second)
+	// Wait for rigctld to start listening (15-second window for Windows).
+	// Windows can have slower startup due to Defender/SmartScreen checks.
+	ready := waitForPort(ctx, addr, 15*time.Second)
 	if !ready {
 		// Collect any error lines already buffered.
 		var stderrBuf []string
@@ -252,11 +253,23 @@ func (m *Manager) monitor(ctx context.Context, cmd *exec.Cmd, cfg config.Profile
 				break drainLoop
 			}
 		}
+
+		// Build detailed error message
 		msg := "rigctld did not start in time — check your serial port and baud rate"
 		if len(stderrBuf) > 0 {
 			last := stderrBuf[len(stderrBuf)-1]
-			msg = interpretStderr(last, cfg)
+			interpreted := interpretStderr(last, cfg)
+			if interpreted != "rigctld: "+last {
+				msg = interpreted
+			} else {
+				// Include raw stderr in the message for debugging
+				msg = fmt.Sprintf("rigctld error: %s (model: %d, port: %s, baud: %d)", last, cfg.HamlibModel, cfg.HamlibDevice, cfg.HamlibBaud)
+			}
+		} else {
+			// No stderr output - process might have exited silently
+			msg = fmt.Sprintf("rigctld started but exited without error output (model: %d, port: %s, baud: %d) - check if rigctld is installed and the radio is connected", cfg.HamlibModel, cfg.HamlibDevice, cfg.HamlibBaud)
 		}
+
 		m.mu.Lock()
 		m.setState(StateError, msg)
 		m.mu.Unlock()
