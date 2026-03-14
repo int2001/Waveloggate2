@@ -28,6 +28,15 @@ type Profile struct {
 	RotatorThresholdEl float64 `json:"rotator_threshold_el"`
 	RotatorParkAz      float64 `json:"rotator_park_az"`
 	RotatorParkEl      float64 `json:"rotator_park_el"`
+
+	// Managed rigctld settings (WaveLogGate launches/manages rigctld).
+	HamlibManaged   bool   `json:"hamlib_managed"`
+	HamlibModel     int    `json:"hamlib_model"`
+	HamlibDevice    string `json:"hamlib_device"`
+	HamlibBaud      int    `json:"hamlib_baud"`
+	HamlibParity    string `json:"hamlib_parity"`
+	HamlibStopBits  int    `json:"hamlib_stop_bits"`
+	HamlibHandshake string `json:"hamlib_handshake"`
 }
 
 // Config is the root configuration object.
@@ -66,7 +75,7 @@ func defaultProfile() Profile {
 
 func Default() Config {
 	return Config{
-		Version:        4,
+		Version:        5,
 		Profile:        0,
 		ProfileNames:   []string{"Profile 1", "Profile 2"},
 		UDPEnabled:     true,
@@ -145,6 +154,10 @@ func migrate(cfg Config) Config {
 	if cfg.Version < 4 {
 		cfg.Version = 4
 		// MinimapEnabled defaults to false — already zero value.
+	}
+	if cfg.Version < 5 {
+		cfg.Version = 5
+		// New hamlib managed fields default to zero values (disabled).
 	}
 	return cfg
 }

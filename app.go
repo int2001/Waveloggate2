@@ -13,6 +13,7 @@ import (
 	"waveloggate/internal/cert"
 	"waveloggate/internal/config"
 	"waveloggate/internal/debug"
+	"waveloggate/internal/hamlib"
 	"waveloggate/internal/qsy"
 	"waveloggate/internal/radio"
 	"waveloggate/internal/rotator"
@@ -34,6 +35,7 @@ type App struct {
 	poller    *radio.Poller
 	wlClient  *wavelog.Client
 	rotator   *rotator.Client
+	hamlibMgr *hamlib.Manager
 }
 
 // NewApp creates a new App.
@@ -87,6 +89,15 @@ func (a *App) startup(ctx context.Context) {
 	}
 	rot.Start()
 	a.rotator = rot
+
+	// Hamlib process manager.
+	a.hamlibMgr = hamlib.New(func(running bool, message string) {
+		wailsruntime.EventsEmit(a.ctx, "hamlib:status", map[string]interface{}{
+			"running": running,
+			"message": message,
+		})
+	})
+	a.startManagedHamlib(profile)
 
 	a.wsHub.OnMessage = func(data []byte) {
 		debug.Log("[WS] received: %s", data)
@@ -222,6 +233,9 @@ func (a *App) startup(ctx context.Context) {
 
 // shutdown is called by Wails when the application closes.
 func (a *App) shutdown(ctx context.Context) {
+	if a.hamlibMgr != nil {
+		a.hamlibMgr.Stop()
+	}
 	if a.udpSrv != nil {
 		a.udpSrv.Stop()
 	}
@@ -256,6 +270,7 @@ func (a *App) SaveConfig(cfg config.Config) config.Config {
 	a.wlClient.UpdateProfile(&profile)
 	a.poller.UpdateConfig(&profile)
 	a.rotator.UpdateProfile(profile)
+	a.startManagedHamlib(profile)
 
 	wailsruntime.EventsEmit(a.ctx, "rotator:enabled", profile.RotatorEnabled)
 	wailsruntime.EventsEmit(a.ctx, "radio:enabled", profile.FlrigEna || profile.HamlibEna)
@@ -346,6 +361,7 @@ func (a *App) SwitchProfile(index int) error {
 	a.wlClient.UpdateProfile(&profile)
 	a.poller.UpdateConfig(&profile)
 	a.rotator.UpdateProfile(profile)
+	a.startManagedHamlib(profile)
 
 	wailsruntime.EventsEmit(a.ctx, "profile:switched", map[string]interface{}{
 		"rotatorEnabled": profile.RotatorEnabled,
@@ -456,6 +472,108 @@ func (a *App) IsCertInstalled() bool {
 // InstallCert installs the Root CA into the system trust store.
 func (a *App) InstallCert() cert.InstallResult {
 	return cert.Install(a.certPaths.CACert)
+}
+
+// ─── Hamlib management ─────────────────────────────────────────────────────────
+
+// HamlibStatus is returned by GetHamlibStatus.
+type HamlibStatus struct {
+	Installed    bool   `json:"installed"`
+	Version      string `json:"version"`
+	Running      bool   `json:"running"`
+	StatusMsg    string `json:"statusMsg"`
+	InstallGuide string `json:"installGuide"`
+}
+
+// DownloadResult is returned by DownloadHamlib.
+type DownloadResult struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+// GetHamlibStatus returns the current hamlib installation and process status.
+func (a *App) GetHamlibStatus() HamlibStatus {
+	_, err := hamlib.RigctldPath()
+	installed := err == nil
+	return HamlibStatus{
+		Installed:    installed,
+		Version:      hamlib.InstalledVersion(),
+		Running:      a.hamlibMgr != nil && a.hamlibMgr.IsRunning(),
+		StatusMsg:    a.hamlibStatusMsg(),
+		InstallGuide: hamlib.InstallGuide(),
+	}
+}
+
+func (a *App) hamlibStatusMsg() string {
+	if a.hamlibMgr == nil {
+		return ""
+	}
+	return a.hamlibMgr.StatusString()
+}
+
+// DownloadHamlib triggers the hamlib download (Windows) or returns install guide (others).
+func (a *App) DownloadHamlib() DownloadResult {
+	progressCh := make(chan int, 16)
+	go func() {
+		for pct := range progressCh {
+			wailsruntime.EventsEmit(a.ctx, "hamlib:download_progress", map[string]interface{}{
+				"percent": pct,
+			})
+		}
+	}()
+
+	ctx := a.ctx
+	err := hamlib.Download(ctx, progressCh)
+	close(progressCh)
+	if err != nil {
+		return DownloadResult{Success: false, Message: err.Error()}
+	}
+	return DownloadResult{Success: true, Message: "rigctld installed successfully"}
+}
+
+// SearchRadioModels returns hamlib radio models matching the query string.
+func (a *App) SearchRadioModels(q string) []hamlib.RadioModel {
+	return hamlib.SearchModels(q)
+}
+
+// GetSerialPorts returns available serial ports on the current platform.
+func (a *App) GetSerialPorts() []string {
+	return hamlib.ListSerialPorts()
+}
+
+// StartHamlib starts (or restarts) the managed rigctld process for the active profile.
+func (a *App) StartHamlib() error {
+	if a.hamlibMgr == nil {
+		return fmt.Errorf("hamlib manager not initialised")
+	}
+	return a.hamlibMgr.Start(a.cfg.ActiveProfile())
+}
+
+// StopHamlib stops the managed rigctld process.
+func (a *App) StopHamlib() {
+	if a.hamlibMgr != nil {
+		a.hamlibMgr.Stop()
+	}
+}
+
+// startManagedHamlib stops any running instance and starts a new one if the
+// profile has HamlibManaged=true and HamlibEna=true.
+func (a *App) startManagedHamlib(profile config.Profile) {
+	if a.hamlibMgr == nil {
+		return
+	}
+	a.hamlibMgr.Stop()
+	if profile.HamlibManaged && profile.HamlibEna {
+		go func() {
+			if err := a.hamlibMgr.Start(profile); err != nil {
+				debug.Log("[HAMLIB] Start error: %v", err)
+				wailsruntime.EventsEmit(a.ctx, "hamlib:status", map[string]interface{}{
+					"running": false,
+					"message": err.Error(),
+				})
+			}
+		}()
+	}
 }
 
 // mapKeys returns the keys of a map for debug logging.

@@ -69,15 +69,18 @@
     ? cfg.profiles[cfg.profile]?.flrig_ena
       ? "flrig"
       : cfg.profiles[cfg.profile]?.hamlib_ena
-        ? "hamlib"
+        ? cfg.profiles[cfg.profile]?.hamlib_managed
+          ? "internal"
+          : "hamlib"
         : "none"
     : "none";
 
   $: rotatorEnabled = cfg?.profiles?.[cfg.profile]?.rotator_enabled ?? false;
 
   function setRadioType(type) {
-    setProfileField("flrig_ena", type === "flrig");
-    setProfileField("hamlib_ena", type === "hamlib");
+    setProfileField("flrig_ena",     type === "flrig");
+    setProfileField("hamlib_ena",    type === "hamlib" || type === "internal");
+    setProfileField("hamlib_managed", type === "internal");
   }
 </script>
 

@@ -59,6 +59,13 @@ export namespace config {
 	    rotator_threshold_el: number;
 	    rotator_park_az: number;
 	    rotator_park_el: number;
+	    hamlib_managed: boolean;
+	    hamlib_model: number;
+	    hamlib_device: string;
+	    hamlib_baud: number;
+	    hamlib_parity: string;
+	    hamlib_stop_bits: number;
+	    hamlib_handshake: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new Profile(source);
@@ -85,6 +92,13 @@ export namespace config {
 	        this.rotator_threshold_el = source["rotator_threshold_el"];
 	        this.rotator_park_az = source["rotator_park_az"];
 	        this.rotator_park_el = source["rotator_park_el"];
+	        this.hamlib_managed = source["hamlib_managed"];
+	        this.hamlib_model = source["hamlib_model"];
+	        this.hamlib_device = source["hamlib_device"];
+	        this.hamlib_baud = source["hamlib_baud"];
+	        this.hamlib_parity = source["hamlib_parity"];
+	        this.hamlib_stop_bits = source["hamlib_stop_bits"];
+	        this.hamlib_handshake = source["hamlib_handshake"];
 	    }
 	}
 	export class Config {
@@ -132,8 +146,63 @@ export namespace config {
 
 }
 
+export namespace hamlib {
+	
+	export class RadioModel {
+	    id: number;
+	    manufacturer: string;
+	    model: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new RadioModel(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.manufacturer = source["manufacturer"];
+	        this.model = source["model"];
+	    }
+	}
+
+}
+
 export namespace main {
 	
+	export class DownloadResult {
+	    success: boolean;
+	    message: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new DownloadResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.success = source["success"];
+	        this.message = source["message"];
+	    }
+	}
+	export class HamlibStatus {
+	    installed: boolean;
+	    version: string;
+	    running: boolean;
+	    statusMsg: string;
+	    installGuide: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new HamlibStatus(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.installed = source["installed"];
+	        this.version = source["version"];
+	        this.running = source["running"];
+	        this.statusMsg = source["statusMsg"];
+	        this.installGuide = source["installGuide"];
+	    }
+	}
 	export class RotatorStatus {
 	    connected: boolean;
 	    az: number;

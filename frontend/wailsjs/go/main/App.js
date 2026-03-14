@@ -10,6 +10,10 @@ export function DeleteProfile(arg1) {
   return window['go']['main']['App']['DeleteProfile'](arg1);
 }
 
+export function DownloadHamlib() {
+  return window['go']['main']['App']['DownloadHamlib']();
+}
+
 export function GetCertInfo() {
   return window['go']['main']['App']['GetCertInfo']();
 }
@@ -18,8 +22,16 @@ export function GetConfig() {
   return window['go']['main']['App']['GetConfig']();
 }
 
+export function GetHamlibStatus() {
+  return window['go']['main']['App']['GetHamlibStatus']();
+}
+
 export function GetRotatorStatus() {
   return window['go']['main']['App']['GetRotatorStatus']();
+}
+
+export function GetSerialPorts() {
+  return window['go']['main']['App']['GetSerialPorts']();
 }
 
 export function GetStations(arg1, arg2) {
@@ -56,6 +68,18 @@ export function SaveAdvanced(arg1, arg2, arg3) {
 
 export function SaveConfig(arg1) {
   return window['go']['main']['App']['SaveConfig'](arg1);
+}
+
+export function SearchRadioModels(arg1) {
+  return window['go']['main']['App']['SearchRadioModels'](arg1);
+}
+
+export function StartHamlib() {
+  return window['go']['main']['App']['StartHamlib']();
+}
+
+export function StopHamlib() {
+  return window['go']['main']['App']['StopHamlib']();
 }
 
 export function SwitchProfile(arg1) {
