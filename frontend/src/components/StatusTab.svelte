@@ -49,7 +49,7 @@
   </section>
 
   {#if radioEnabled}
-    <TrxDisplay {freqMHz} {mode} {split} {freqTxMHz} {modeTx} />
+    <TrxDisplay {freqMHz} {mode} {split} {freqTxMHz} {modeTx} on:freqscroll on:txfreqscroll />
   {/if}
   
   {#if rotatorEnabled}

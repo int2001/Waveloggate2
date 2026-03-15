@@ -22,6 +22,32 @@
   // Polar map geometry (50px radius for 110×110 SVG)
   $: azRad = (rotAz - 90) * Math.PI / 180;
   $: elR   = 50 * (1 - rotEl / 90);
+
+  function buildSpans(freq) {
+    if (!freq) return [];
+    const dotIdx = freq.indexOf(".");
+    return freq.split("").map((ch, i) => {
+      if (ch === ".") return { char: ch, stepHz: 0 };
+      let stepHz;
+      if (i < dotIdx) {
+        const rightPos = dotIdx - 1 - i;
+        stepHz = Math.pow(10, rightPos) * 1_000_000;
+      } else {
+        const decPos = i - dotIdx - 1;
+        stepHz = Math.round(Math.pow(10, -(decPos + 1)) * 1_000_000);
+      }
+      return { char: ch, stepHz };
+    });
+  }
+
+  function onWheel(e, stepHz, tx = false) {
+    if (!stepHz) return;
+    const delta = e.deltaY < 0 ? 1 : -1;
+    dispatch(tx ? "txfreqscroll" : "freqscroll", { deltaHz: delta * stepHz });
+  }
+
+  $: rxSpans = buildSpans(freqMHz);
+  $: txSpans = buildSpans(freqTxMHz);
 </script>
 
 <!-- Mini header: expand icon (left) + UTC clock (right) -->
@@ -42,12 +68,12 @@
     {#if freqMHz}
       {#if split}
         <span class="text-fg-muted text-2xs self-end mb-0.5">RX</span>
-        <span class="text-accent-value text-xl font-bold leading-none">{freqMHz}</span>
+        <span class="text-accent-value text-xl font-bold leading-none">{#each rxSpans as span}{#if span.stepHz}<span style="cursor:ns-resize" on:wheel|preventDefault={(e) => onWheel(e, span.stepHz)}>{span.char}</span>{:else}{span.char}{/if}{/each}</span>
         <span class="text-fg-muted text-2xs self-end mb-0.5">MHz</span>
         <span class="bg-accent-orange/10 border border-accent-orange/40 text-accent-orange text-2xs font-bold px-1.5 py-0.5 rounded tracking-wider">SPLIT</span>
         {#if freqTxMHz}
           <span class="text-fg-muted text-2xs self-end mb-0.5">TX</span>
-          <span class="text-accent-value text-xl font-bold leading-none">{freqTxMHz}</span>
+          <span class="text-accent-value text-xl font-bold leading-none">{#each txSpans as span}{#if span.stepHz}<span style="cursor:ns-resize" on:wheel|preventDefault={(e) => onWheel(e, span.stepHz, true)}>{span.char}</span>{:else}{span.char}{/if}{/each}</span>
           <span class="text-fg-muted text-2xs self-end mb-0.5">MHz</span>
         {/if}
         {#if modeTx && modeTx !== mode}
@@ -56,7 +82,7 @@
           <span class="ml-auto bg-surface-app border border-stroke-section text-accent-orange text-xs font-semibold px-2 py-0.5 rounded-md">{mode}</span>
         {/if}
       {:else}
-        <span class="text-accent-value text-xl font-bold leading-none">{freqMHz}</span>
+        <span class="text-accent-value text-xl font-bold leading-none">{#each rxSpans as span}{#if span.stepHz}<span style="cursor:ns-resize" on:wheel|preventDefault={(e) => onWheel(e, span.stepHz)}>{span.char}</span>{:else}{span.char}{/if}{/each}</span>
         <span class="text-fg-muted text-2xs self-end mb-0.5">MHz</span>
         {#if mode}
           <span class="ml-auto bg-surface-app border border-stroke-section text-accent-orange text-xs font-semibold px-2 py-0.5 rounded-md">{mode}</span>

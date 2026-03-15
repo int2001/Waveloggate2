@@ -103,6 +103,18 @@ func (p *Poller) SetFreqMode(hz int64, mode string) error {
 	return client.SetFreqMode(hz, setMode)
 }
 
+// SetTxFreq sets the TX (VFO B) frequency in split mode.
+func (p *Poller) SetTxFreq(hz int64) error {
+	p.mu.Lock()
+	client := p.client
+	p.mu.Unlock()
+
+	if client == nil {
+		return fmt.Errorf("no radio client configured")
+	}
+	return client.SetTxFreq(hz)
+}
+
 func (p *Poller) poll() {
 	p.mu.Lock()
 	client := p.client

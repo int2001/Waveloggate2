@@ -8,6 +8,8 @@
     GetUDPStatus,
     RotatorSetFollow,
     RotatorPark,
+    RadioSetFreq,
+    RadioSetTxFreq,
   } from "../wailsjs/go/main/App.js";
   import StatusTab from "./components/StatusTab.svelte";
   import ConfigTab from "./components/ConfigTab.svelte";
@@ -88,6 +90,39 @@
   async function park() {
     rotFollow = "off";
     await RotatorPark();
+  }
+
+  function mhzStrToHz(mhzStr) {
+    const [intPart, decPart = "00000"] = mhzStr.split(".");
+    const padded = (decPart + "00000").slice(0, 5);
+    return parseInt(intPart) * 1_000_000 + parseInt(padded) * 10;
+  }
+
+  // Local accumulators so rapid scrolling doesn't re-derive from the stale
+  // radio-polled freqMHz (which updates only once per second).
+  let _localFreqHz = null;
+  let _localTxFreqHz = null;
+  let _resetFreqTimer = null;
+  let _resetTxFreqTimer = null;
+
+  function handleFreqScroll({ detail }) {
+    if (!freqMHz) return;
+    if (_localFreqHz === null) _localFreqHz = mhzStrToHz(freqMHz);
+    _localFreqHz += detail.deltaHz;
+    if (_localFreqHz <= 0) return;
+    RadioSetFreq(_localFreqHz);
+    clearTimeout(_resetFreqTimer);
+    _resetFreqTimer = setTimeout(() => { _localFreqHz = null; }, 1500);
+  }
+
+  function handleTxFreqScroll({ detail }) {
+    if (!freqTxMHz) return;
+    if (_localTxFreqHz === null) _localTxFreqHz = mhzStrToHz(freqTxMHz);
+    _localTxFreqHz += detail.deltaHz;
+    if (_localTxFreqHz <= 0) return;
+    RadioSetTxFreq(_localTxFreqHz);
+    clearTimeout(_resetTxFreqTimer);
+    _resetTxFreqTimer = setTimeout(() => { _localTxFreqHz = null; }, 1500);
   }
 
   // ── Clock ──────────────────────────────────────────────────────────────────
@@ -205,6 +240,8 @@
       {hfAz} {satAz} {satEl}
       on:expand={exitMiniMode}
       on:follow={(e) => setFollow(e.detail)}
+      on:freqscroll={handleFreqScroll}
+      on:txfreqscroll={handleTxFreqScroll}
     />
   {:else}
     <!-- ── FULL MODE ──────────────────────────────────────────────────────── -->
@@ -245,6 +282,8 @@
           {hfAz} {satAz} {satEl}
           on:follow={(e) => setFollow(e.detail)}
           on:park={park}
+          on:freqscroll={handleFreqScroll}
+          on:txfreqscroll={handleTxFreqScroll}
         />
       </div>
       <div class:hidden={activeTab !== "config"}><ConfigTab /></div>

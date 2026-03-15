@@ -50,6 +50,14 @@ export function IsCertInstalled() {
   return window['go']['main']['App']['IsCertInstalled']();
 }
 
+export function RadioSetFreq(arg1) {
+  return window['go']['main']['App']['RadioSetFreq'](arg1);
+}
+
+export function RadioSetTxFreq(arg1) {
+  return window['go']['main']['App']['RadioSetTxFreq'](arg1);
+}
+
 export function RefreshRadioModels() {
   return window['go']['main']['App']['RefreshRadioModels']();
 }

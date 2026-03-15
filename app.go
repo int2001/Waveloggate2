@@ -573,6 +573,22 @@ func (a *App) RefreshRadioModels() int {
 	return len(models)
 }
 
+// RadioSetFreq tunes the radio to the given frequency in Hz, keeping the current mode.
+func (a *App) RadioSetFreq(hz int64) error {
+	if a.poller == nil {
+		return fmt.Errorf("radio not connected")
+	}
+	return a.poller.SetFreqMode(hz, "")
+}
+
+// RadioSetTxFreq sets the TX (VFO B) frequency in Hz for split operation.
+func (a *App) RadioSetTxFreq(hz int64) error {
+	if a.poller == nil {
+		return fmt.Errorf("radio not connected")
+	}
+	return a.poller.SetTxFreq(hz)
+}
+
 // GetSerialPorts returns available serial ports on the current platform.
 func (a *App) GetSerialPorts() []string {
 	return hamlib.ListSerialPorts()

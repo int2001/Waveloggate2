@@ -30,6 +30,7 @@ type RigStatus struct {
 type RadioClient interface {
 	GetStatus() (RigStatus, error)
 	SetFreqMode(hz int64, mode string) error
+	SetTxFreq(hz int64) error
 	GetModes() ([]string, error)
 }
 
@@ -150,6 +151,11 @@ func (c *FLRigClient) SetFreqMode(hz int64, mode string) error {
 		}
 	}
 	_, err := c.xmlrpcCall("main.set_frequency", float64(hz))
+	return err
+}
+
+func (c *FLRigClient) SetTxFreq(hz int64) error {
+	_, err := c.xmlrpcCall("rig.set_vfoB", float64(hz))
 	return err
 }
 
@@ -290,6 +296,11 @@ func (c *HamlibClient) SetFreqMode(hz int64, mode string) error {
 		}
 	}
 	return nil
+}
+
+func (c *HamlibClient) SetTxFreq(hz int64) error {
+	_, err := c.sendCmd(fmt.Sprintf("I %d\n", hz))
+	return err
 }
 
 func (c *HamlibClient) GetModes() ([]string, error) {

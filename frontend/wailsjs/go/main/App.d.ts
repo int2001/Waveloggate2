@@ -30,6 +30,10 @@ export function InstallCert():Promise<cert.InstallResult>;
 
 export function IsCertInstalled():Promise<boolean>;
 
+export function RadioSetFreq(arg1:number):Promise<void>;
+
+export function RadioSetTxFreq(arg1:number):Promise<void>;
+
 export function RefreshRadioModels():Promise<number>;
 
 export function RenameProfile(arg1:number,arg2:string):Promise<void>;
