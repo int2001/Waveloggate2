@@ -38,6 +38,8 @@ export function RefreshRadioModels():Promise<number>;
 
 export function RenameProfile(arg1:number,arg2:string):Promise<void>;
 
+export function RotatorGoto(arg1:number,arg2:number):Promise<void>;
+
 export function RotatorPark():Promise<void>;
 
 export function RotatorSetFollow(arg1:string):Promise<void>;

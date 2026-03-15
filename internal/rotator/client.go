@@ -57,6 +57,7 @@ type Client struct {
 	lastPTime   time.Time
 	stopping    bool      // S sent, waiting for RPRT
 	stopAfter   *Position // P to issue after S's RPRT
+	lastMoving  bool
 
 	lastCmdPos Position
 	currentPos Position
@@ -70,6 +71,7 @@ type Client struct {
 	OnPosition func(az, el float64)            // → Wails event rotator:position
 	OnStatus   func(connected bool)             // → Wails event rotator:status
 	OnBearing  func(typ string, az, el float64) // → Wails event rotator:bearing
+	OnMoving   func(moving bool)               // → Wails event rotator:moving
 	OnError    func(msg string)                 // → Wails event status:message
 
 	cmdCh  chan struct{}
@@ -120,7 +122,35 @@ func (c *Client) SetFollow(mode FollowMode) {
 		if c.conn != nil && c.currentCmd == "" {
 			fmt.Fprintf(c.conn, "S\n")
 		}
+		c.notifyMoving()
 	}
+	c.mu.Unlock()
+	c.signal()
+}
+
+// GotoPosition switches follow to Off and queues a direct move to the given az/el,
+// bypassing the movement threshold (same as Park).
+func (c *Client) GotoPosition(az, el float64) {
+	az = math.Mod(az, 360)
+	if az < 0 {
+		az += 360
+	}
+	if el < 0 {
+		el = 0
+	}
+	if el > 90 {
+		el = 90
+	}
+	c.mu.Lock()
+	c.followMode = FollowOff
+	c.pendingSet = &Position{Az: az, El: el}
+	c.pendingPark = true
+	c.pendingWs = nil
+	if c.wsTimer != nil {
+		c.wsTimer.Stop()
+		c.wsTimer = nil
+	}
+	c.notifyMoving()
 	c.mu.Unlock()
 	c.signal()
 }
@@ -131,6 +161,7 @@ func (c *Client) Park() {
 	c.followMode = FollowOff
 	c.pendingSet = &Position{Az: c.cfg.RotatorParkAz, El: c.cfg.RotatorParkEl}
 	c.pendingPark = true
+	c.notifyMoving()
 	c.mu.Unlock()
 	c.signal()
 }
@@ -169,6 +200,7 @@ func (c *Client) HandleWSCommand(az, el float64, typ string) {
 			c.wsTimer = nil
 		}
 		debug.Log("[ROT] WS bearing queued immediately: az=%.1f el=%.1f", az, el)
+		c.notifyMoving()
 		c.mu.Unlock()
 		c.signal()
 		return
@@ -190,6 +222,7 @@ func (c *Client) HandleWSCommand(az, el float64, typ string) {
 					debug.Log("[ROT] WS deferred bearing applied: az=%.1f el=%.1f follow=%s", pw.az, pw.el, fm)
 					c.lastWsCmd = time.Now()
 					c.pendingSet = &Position{Az: pw.az, El: pw.el}
+					c.notifyMoving()
 				} else {
 					debug.Log("[ROT] WS deferred bearing dropped: follow=%s no longer matches type=%s", fm, pw.typ)
 				}
@@ -307,7 +340,7 @@ func (c *Client) ensureConnected() {
 	c.buf = ""
 	c.currentCmd = ""
 	c.pendingSet = nil
-	c.pollPending = false
+	c.pollPending = true // poll immediately on connect
 	c.stopping = false
 	c.stopAfter = nil
 	if c.busyTimer != nil {
@@ -377,32 +410,49 @@ func (c *Client) onLine(line string) {
 			} else {
 				debug.Log("[ROT] RPRT %s for P received", code)
 			}
+			c.notifyMoving()
 			c.pollPending = false
 			c.buf = ""
 			c.signal()
 		}
 
 	case "get":
-		// Accumulate lines; parse when we have ≥2 numeric lines.
+		// Accumulate lines; parse when we have ≥2 floats or RPRT arrives.
+		// Handles both bare ("123.0") and labelled ("Azimuth: 123.0") formats.
 		lines := strings.Split(strings.TrimSpace(c.buf), "\n")
 		var nums []float64
+		gotRPRT := false
 		for _, l := range lines {
 			l = strings.TrimSpace(l)
 			if l == "" {
 				continue
 			}
-			v, err := strconv.ParseFloat(l, 64)
-			if err == nil {
-				nums = append(nums, v)
+			if strings.HasPrefix(l, "RPRT") {
+				gotRPRT = true
+				continue
+			}
+			// Take the last whitespace-separated field — works for both
+			// bare "123.0" and labelled "Azimuth: 123.0".
+			fields := strings.Fields(l)
+			if len(fields) > 0 {
+				if v, err := strconv.ParseFloat(fields[len(fields)-1], 64); err == nil {
+					nums = append(nums, v)
+				}
 			}
 		}
-		debug.Log("[ROT] p response raw lines: %q → parsed nums: %v", lines, nums)
+		debug.Log("[ROT] p response raw lines: %q → parsed nums: %v gotRPRT=%v", lines, nums, gotRPRT)
 		if len(nums) >= 2 {
 			c.currentPos = Position{Az: nums[0], El: nums[1]}
 			if c.OnPosition != nil {
 				az, el := c.currentPos.Az, c.currentPos.El
 				go c.OnPosition(az, el)
 			}
+			c.clearBusy()
+			c.buf = ""
+			c.signal()
+		} else if gotRPRT {
+			// RPRT arrived but couldn't parse ≥2 floats — rotctld may not support p
+			debug.Log("[ROT] p RPRT received but insufficient data: %v", nums)
 			c.clearBusy()
 			c.buf = ""
 			c.signal()
@@ -454,6 +504,7 @@ func (c *Client) processQueue() {
 		c.stopping = true
 		c.stopAfter = pos
 		c.armBusy()
+		c.notifyMoving()
 		return
 	}
 
@@ -479,6 +530,19 @@ func (c *Client) sendP(pos *Position) {
 	c.armBusy()
 }
 
+// notifyMoving fires OnMoving if the moving state has changed. Must be called with mu held.
+func (c *Client) notifyMoving() {
+	moving := c.pendingSet != nil || c.stopping || c.currentCmd == "set"
+	if moving == c.lastMoving {
+		return
+	}
+	c.lastMoving = moving
+	if c.OnMoving != nil {
+		cb := c.OnMoving
+		go cb(moving)
+	}
+}
+
 // armBusy arms the busy watchdog timer. Must be called with mu held.
 func (c *Client) armBusy() {
 	if c.busyTimer != nil {
@@ -488,6 +552,16 @@ func (c *Client) armBusy() {
 		c.mu.Lock()
 		c.currentCmd = ""
 		c.buf = ""
+		if c.stopping {
+			// S timed out — rescue target so next processQueue retries
+			c.stopping = false
+			if c.stopAfter != nil {
+				c.pendingSet = c.stopAfter
+				c.stopAfter = nil
+				c.pendingPark = true // bypass threshold
+			}
+		}
+		c.notifyMoving()
 		c.mu.Unlock()
 		c.signal()
 	})

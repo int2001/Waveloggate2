@@ -15,12 +15,15 @@
   export let radioEnabled = false;
   export let rotatorEnabled = false;
   export let rotConnected = false;
+  export let rotMoving = false;
   export let rotAz = 0;
   export let rotEl = 0;
   export let rotFollow = "off";
   export let hfAz = null;
   export let satAz = null;
   export let satEl = null;
+  export let demandedAz = null;
+  export let demandedEl = null;
 </script>
 
 <div class="py-2.5 px-3 flex flex-col gap-2">
@@ -54,9 +57,12 @@
   
   {#if rotatorEnabled}
     <RotatorPanel
-      {rotConnected} {rotAz} {rotEl} {rotFollow} {hfAz} {satAz} {satEl}
+      {rotConnected} {rotMoving} {rotAz} {rotEl} {rotFollow} {hfAz} {satAz} {satEl}
+      {demandedAz} {demandedEl}
       on:follow={(e) => dispatch("follow", e.detail)}
       on:park={() => dispatch("park")}
+      on:rotscroll
+      on:rotgoto
     />
   {/if}
 </div>

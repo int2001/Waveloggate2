@@ -12,16 +12,27 @@
   export let rotatorEnabled = false;
   export let minimapEnabled = false;
   export let rotConnected = false;
+  export let rotMoving = false;
   export let rotAz = 0;
   export let rotEl = 0;
   export let rotFollow = "off";
   export let hfAz = null;
   export let satAz = null;
   export let satEl = null;
+  export let demandedAz = null;
+  export let demandedEl = null;
 
   // Polar map geometry (50px radius for 110×110 SVG)
   $: azRad = (rotAz - 90) * Math.PI / 180;
   $: elR   = 50 * (1 - rotEl / 90);
+
+  // Local target state — set immediately on click so the overlay doesn't
+  // wait for the demandedAz prop to round-trip through App.svelte.
+  let _targetAz = null;
+  let _targetEl = null;
+  let _targetTimer = null;
+  $: _showAz = demandedAz ?? _targetAz;
+  $: _showEl = demandedEl ?? _targetEl;
 
   function buildSpans(freq) {
     if (!freq) return [];
@@ -48,6 +59,35 @@
 
   $: rxSpans = buildSpans(freqMHz);
   $: txSpans = buildSpans(freqTxMHz);
+
+  function onAzWheel(e) {
+    const delta = e.deltaY < 0 ? 1 : -1;
+    dispatch("rotscroll", { deltaAz: delta, deltaEl: 0 });
+  }
+
+  function onElWheel(e) {
+    const delta = e.deltaY < 0 ? 1 : -1;
+    dispatch("rotscroll", { deltaAz: 0, deltaEl: delta });
+  }
+
+  function onMinimapClick(e) {
+    const svg = e.currentTarget;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const svgPt = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const dx = svgPt.x - 55;
+    const dy = svgPt.y - 55;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 50) return;
+    const az = Math.round(((Math.atan2(dx, -dy) * 180 / Math.PI) + 360) % 360 * 10) / 10;
+    const el = Math.round(Math.max(0, 90 * (1 - dist / 50)) * 10) / 10;
+    _targetAz = az;
+    _targetEl = el;
+    clearTimeout(_targetTimer);
+    _targetTimer = setTimeout(() => { _targetAz = null; _targetEl = null; }, 5000);
+    dispatch("rotgoto", { az, el });
+  }
 </script>
 
 <!-- Mini header: expand icon (left) + UTC clock (right) -->
@@ -115,13 +155,16 @@
     <div class="flex items-center gap-3 font-mono border-t border-stroke-section pt-1.5">
       <div class="flex items-center gap-1">
         <span class="text-fg-muted text-2xs uppercase tracking-wider">Az</span>
-        <span class="text-accent-value text-sm font-bold">{rotAz.toFixed(1)}°</span>
+        <span class="text-accent-value text-sm font-bold" style="cursor:ns-resize" title="Scroll to adjust azimuth" on:wheel|preventDefault={onAzWheel}>{rotAz.toFixed(1)}°</span>
       </div>
       <div class="flex items-center gap-1">
         <span class="text-fg-muted text-2xs uppercase tracking-wider">El</span>
-        <span class="text-accent-value text-sm font-bold">{rotEl.toFixed(1)}°</span>
+        <span class="text-accent-value text-sm font-bold" style="cursor:ns-resize" title="Scroll to adjust elevation" on:wheel|preventDefault={onElWheel}>{rotEl.toFixed(1)}°</span>
       </div>
-      <div class="ml-auto flex items-center gap-1">
+      <div class="ml-auto flex items-center gap-1.5">
+        {#if rotMoving}
+          <span class="text-accent-orange text-2xs font-semibold animate-pulse">Moving…</span>
+        {/if}
         <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 {rotConnected ? 'bg-accent-green' : 'bg-fg-dim'}"></span>
       </div>
     </div>
@@ -148,7 +191,8 @@
     <!-- Compact polar map (110×110, only when minimapEnabled) -->
     {#if minimapEnabled}
       <div class="flex justify-center pt-0.5">
-        <svg viewBox="0 0 110 110" width="110" height="110" xmlns="http://www.w3.org/2000/svg">
+        <svg viewBox="0 0 110 110" width="110" height="110" xmlns="http://www.w3.org/2000/svg"
+          style="cursor:crosshair" title="Click to point rotator" on:click={onMinimapClick}>
           <!-- Background -->
           <circle cx="55" cy="55" r="50" fill="#1e1e1e" stroke="#404040" stroke-width="1"/>
           <!-- Elevation rings -->
@@ -182,6 +226,15 @@
             {@const r2 = (Number(satAz) - 90) * Math.PI / 180}
             {@const rEl = 50 * (1 - Number(satEl || 0) / 90)}
             <circle cx={55 + rEl * Math.cos(r2)} cy={55 + rEl * Math.sin(r2)} r="3" fill="#ffaa55" opacity="0.8"/>
+          {/if}
+          <!-- Demanded position: dashed orange line + hollow circle -->
+          {#if _showAz !== null}
+            {@const dRad = (Number(_showAz) - 90) * Math.PI / 180}
+            {@const dR   = 50 * (1 - Number(_showEl || 0) / 90)}
+            <line x1="55" y1="55" x2={55 + 48 * Math.cos(dRad)} y2={55 + 48 * Math.sin(dRad)}
+              stroke="#ffaa55" stroke-width="1" stroke-dasharray="3,2" opacity="0.8"/>
+            <circle cx={55 + dR * Math.cos(dRad)} cy={55 + dR * Math.sin(dRad)} r="3"
+              fill="none" stroke="#ffaa55" stroke-width="1.5" opacity="0.9"/>
           {/if}
           <!-- Rotator needle + position dot -->
           <line

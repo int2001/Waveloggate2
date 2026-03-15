@@ -66,6 +66,10 @@ export function RenameProfile(arg1, arg2) {
   return window['go']['main']['App']['RenameProfile'](arg1, arg2);
 }
 
+export function RotatorGoto(arg1, arg2) {
+  return window['go']['main']['App']['RotatorGoto'](arg1, arg2);
+}
+
 export function RotatorPark() {
   return window['go']['main']['App']['RotatorPark']();
 }

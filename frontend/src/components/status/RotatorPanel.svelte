@@ -3,12 +3,15 @@
   const dispatch = createEventDispatcher();
 
   export let rotConnected = false;
+  export let rotMoving = false;
   export let rotAz = 0;
   export let rotEl = 0;
   export let rotFollow = "off";
   export let hfAz = null;
   export let satAz = null;
   export let satEl = null;
+  export let demandedAz = null;
+  export let demandedEl = null;
 
   // Precompute current rotator position for the azimuth map.
   $: azRad = (rotAz - 90) * Math.PI / 180;
@@ -18,6 +21,43 @@
   function toggleMap() {
     showMap = !showMap;
     localStorage.setItem("rotator.showMap", String(showMap));
+  }
+
+  // Local target state — set immediately on click so the overlay doesn't
+  // wait for the demandedAz prop to round-trip through App.svelte.
+  let _targetAz = null;
+  let _targetEl = null;
+  let _targetTimer = null;
+  $: _showAz = demandedAz ?? _targetAz;
+  $: _showEl = demandedEl ?? _targetEl;
+
+  function onAzWheel(e) {
+    const delta = e.deltaY < 0 ? 1 : -1;
+    dispatch("rotscroll", { deltaAz: delta, deltaEl: 0 });
+  }
+
+  function onElWheel(e) {
+    const delta = e.deltaY < 0 ? 1 : -1;
+    dispatch("rotscroll", { deltaAz: 0, deltaEl: delta });
+  }
+
+  function onMapClick(e) {
+    const svg = e.currentTarget;
+    const pt = svg.createSVGPoint();
+    pt.x = e.clientX;
+    pt.y = e.clientY;
+    const svgPt = pt.matrixTransform(svg.getScreenCTM().inverse());
+    const dx = svgPt.x - 80;
+    const dy = svgPt.y - 80;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (dist > 72) return;
+    const az = Math.round(((Math.atan2(dx, -dy) * 180 / Math.PI) + 360) % 360 * 10) / 10;
+    const el = Math.round(Math.max(0, 90 * (1 - dist / 72)) * 10) / 10;
+    _targetAz = az;
+    _targetEl = el;
+    clearTimeout(_targetTimer);
+    _targetTimer = setTimeout(() => { _targetAz = null; _targetEl = null; }, 5000);
+    dispatch("rotgoto", { az, el });
   }
 </script>
 
@@ -32,6 +72,9 @@
         on:click={toggleMap}
         title={showMap ? "Hide map" : "Show map"}
       >{showMap ? "▲ map" : "▼ map"}</button>
+      {#if rotMoving}
+        <span class="text-accent-orange text-2xs font-semibold tracking-wide animate-pulse">Moving…</span>
+      {/if}
       <div class="flex items-center gap-1.5">
         <span class="w-1.5 h-1.5 rounded-full flex-shrink-0 {rotConnected ? 'bg-accent-green' : 'bg-fg-dim'}"></span>
         <span class="text-fg-dim text-2xs">{rotConnected ? "connected" : "disconnected"}</span>
@@ -41,11 +84,15 @@
 
   <!-- Az / El instrument tiles -->
   <div class="flex gap-2">
-    <div class="flex-1 bg-surface-app border border-stroke-section rounded-md px-3 py-2.5 flex flex-col gap-0.5">
+    <div class="flex-1 bg-surface-app border border-stroke-section rounded-md px-3 py-2.5 flex flex-col gap-0.5"
+      style="cursor:ns-resize" title="Scroll to adjust azimuth"
+      on:wheel|preventDefault={onAzWheel}>
       <span class="text-fg-muted text-2xs uppercase tracking-wider">Azimuth</span>
       <span class="text-accent-value text-xl font-bold leading-tight">{rotAz.toFixed(1)}°</span>
     </div>
-    <div class="flex-1 bg-surface-app border border-stroke-section rounded-md px-3 py-2.5 flex flex-col gap-0.5">
+    <div class="flex-1 bg-surface-app border border-stroke-section rounded-md px-3 py-2.5 flex flex-col gap-0.5"
+      style="cursor:ns-resize" title="Scroll to adjust elevation"
+      on:wheel|preventDefault={onElWheel}>
       <span class="text-fg-muted text-2xs uppercase tracking-wider">Elevation</span>
       <span class="text-accent-value text-xl font-bold leading-tight">{rotEl.toFixed(1)}°</span>
     </div>
@@ -54,7 +101,8 @@
   <!-- Azimuth map: polar plot (center = zenith, edge = horizon) -->
   {#if showMap}
   <div class="flex justify-center">
-    <svg viewBox="0 0 160 160" width="160" height="160" xmlns="http://www.w3.org/2000/svg">
+    <svg viewBox="0 0 160 160" width="160" height="160" xmlns="http://www.w3.org/2000/svg"
+      style="cursor:crosshair" title="Click to point rotator" on:click={onMapClick}>
       <!-- Background -->
       <circle cx="80" cy="80" r="72" fill="#1e1e1e" stroke="#404040" stroke-width="1"/>
 
@@ -94,6 +142,16 @@
         {@const rad = (Number(satAz) - 90) * Math.PI / 180}
         {@const r = 72 * (1 - Number(satEl || 0) / 90)}
         <circle cx={80 + r * Math.cos(rad)} cy={80 + r * Math.sin(rad)} r="4" fill="#ffaa55" opacity="0.8"/>
+      {/if}
+
+      <!-- Demanded position: dashed orange line + hollow circle -->
+      {#if _showAz !== null}
+        {@const dRad = (Number(_showAz) - 90) * Math.PI / 180}
+        {@const dR   = 72 * (1 - Number(_showEl || 0) / 90)}
+        <line x1="80" y1="80" x2={80 + 70 * Math.cos(dRad)} y2={80 + 70 * Math.sin(dRad)}
+          stroke="#ffaa55" stroke-width="1.5" stroke-dasharray="4,3" stroke-linecap="round" opacity="0.8"/>
+        <circle cx={80 + dR * Math.cos(dRad)} cy={80 + dR * Math.sin(dRad)} r="5"
+          fill="none" stroke="#ffaa55" stroke-width="1.5" opacity="0.9"/>
       {/if}
 
       <!-- Current rotator: faint needle + position dot -->

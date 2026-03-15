@@ -8,6 +8,7 @@
     GetUDPStatus,
     RotatorSetFollow,
     RotatorPark,
+    RotatorGoto,
     RadioSetFreq,
     RadioSetTxFreq,
   } from "../wailsjs/go/main/App.js";
@@ -40,12 +41,15 @@
   let radioEnabled  = false;
   let rotatorEnabled = false;
   let rotConnected  = false;
+  let rotMoving     = false;
   let rotAz         = 0;
   let rotEl         = 0;
   let rotFollow     = "off";
   let hfAz          = null;
   let satAz         = null;
   let satEl         = null;
+  let demandedAz    = null;
+  let demandedEl    = null;
   let minimapEnabled = false;
   let certInfo      = null;
 
@@ -125,6 +129,36 @@
     _resetTxFreqTimer = setTimeout(() => { _localTxFreqHz = null; }, 1500);
   }
 
+  // ── Rotator scroll/click ────────────────────────────────────────────────────
+  // _localRot* tracks the last commanded position so rapid scroll events
+  // accumulate correctly without waiting for the polled rotAz/rotEl to update.
+  // Re-synced from poll only after 5 s of inactivity.
+  let _localRotAz = null;
+  let _localRotEl = null;
+  let _lastRotCmdTime = 0;
+
+  function handleRotScroll({ detail }) {
+    if (!rotConnected) return;
+    if (_localRotAz === null) _localRotAz = rotAz;
+    if (_localRotEl === null) _localRotEl = rotEl;
+    _localRotAz = ((_localRotAz + (detail.deltaAz || 0)) % 360 + 360) % 360;
+    _localRotEl = Math.max(0, Math.min(90, _localRotEl + (detail.deltaEl || 0)));
+    RotatorGoto(_localRotAz, _localRotEl);
+    demandedAz = _localRotAz;
+    demandedEl = _localRotEl;
+    _lastRotCmdTime = Date.now();
+  }
+
+  function handleRotGoto({ detail }) {
+    if (!rotConnected) return;
+    RotatorGoto(detail.az, detail.el);
+    _localRotAz = detail.az;
+    _localRotEl = detail.el;
+    demandedAz = detail.az;
+    demandedEl = detail.el;
+    _lastRotCmdTime = Date.now();
+  }
+
   // ── Clock ──────────────────────────────────────────────────────────────────
   function updateClock() {
     const now = new Date();
@@ -133,7 +167,7 @@
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
   let offRadio, offQso, offStatus, offRotPos, offRotStatus, offRotBearing,
-      offProfile, offRadioEnabled, offRotEnabled, offAdvanced, offCert;
+      offRotMoving, offRotFollow, offProfile, offRadioEnabled, offRotEnabled, offAdvanced, offCert;
 
   onMount(async () => {
     updateClock();
@@ -154,9 +188,20 @@
     });
     offStatus = EventsOn("status:message", (msg) => { statusMsg = msg; });
     offRotPos = EventsOn("rotator:position", (data) => {
-      if (data) { rotAz = data.az; rotEl = data.el; }
+      if (data) {
+        rotAz = data.az; rotEl = data.el;
+        // Re-sync local accumulators once 5 s have passed since the last command,
+        // so the next scroll starts from the actual position rather than a stale target.
+        if (Date.now() - _lastRotCmdTime > 5000) {
+          _localRotAz = null;
+          _localRotEl = null;
+          demandedAz = null;
+          demandedEl = null;
+        }
+      }
     });
     offRotStatus = EventsOn("rotator:status", (connected) => { rotConnected = connected; });
+    offRotMoving = EventsOn("rotator:moving", (moving) => { rotMoving = moving; });
     offRotBearing = EventsOn("rotator:bearing", (data) => {
       if (!data) return;
       if (data.type === "hf") { hfAz = data.az; }
@@ -177,6 +222,10 @@
       minimapEnabled = data?.minimapEnabled ?? false;
     });
     offCert = EventsOn("cert:install_needed", (data) => { certInfo = data; });
+    offRotFollow = EventsOn("rotator:followmode", (mode) => { rotFollow = mode; });
+    EventsOn("rotator:goto", (data) => {
+      if (data) { demandedAz = data.az; demandedEl = data.el; _lastRotCmdTime = Date.now(); }
+    });
 
     // Load initial state
     const cfg = await GetConfig();
@@ -220,6 +269,8 @@
     if (offStatus)     offStatus();
     if (offRotPos)     offRotPos();
     if (offRotStatus)  offRotStatus();
+    if (offRotMoving)  offRotMoving();
+    if (offRotFollow)  offRotFollow();
     if (offRotBearing) offRotBearing();
     if (offProfile)    offProfile();
     if (offRotEnabled) offRotEnabled();
@@ -236,12 +287,14 @@
       {utcTime}
       {freqMHz} {mode} {split} {freqTxMHz} {modeTx} {qsoResult}
       {rotatorEnabled} {minimapEnabled}
-      {rotConnected} {rotAz} {rotEl} {rotFollow}
-      {hfAz} {satAz} {satEl}
+      {rotConnected} {rotMoving} {rotAz} {rotEl} {rotFollow}
+      {hfAz} {satAz} {satEl} {demandedAz} {demandedEl}
       on:expand={exitMiniMode}
       on:follow={(e) => setFollow(e.detail)}
       on:freqscroll={handleFreqScroll}
       on:txfreqscroll={handleTxFreqScroll}
+      on:rotscroll={handleRotScroll}
+      on:rotgoto={handleRotGoto}
     />
   {:else}
     <!-- ── FULL MODE ──────────────────────────────────────────────────────── -->
@@ -278,12 +331,14 @@
         <StatusTab
           {freqMHz} {mode} {split} {freqTxMHz} {modeTx} {statusMsg} {qsoResult}
           {radioEnabled} {rotatorEnabled}
-          {rotConnected} {rotAz} {rotEl} {rotFollow}
-          {hfAz} {satAz} {satEl}
+          {rotConnected} {rotMoving} {rotAz} {rotEl} {rotFollow}
+          {hfAz} {satAz} {satEl} {demandedAz} {demandedEl}
           on:follow={(e) => setFollow(e.detail)}
           on:park={park}
           on:freqscroll={handleFreqScroll}
           on:txfreqscroll={handleTxFreqScroll}
+          on:rotscroll={handleRotScroll}
+          on:rotgoto={handleRotGoto}
         />
       </div>
       <div class:hidden={activeTab !== "config"}><ConfigTab /></div>

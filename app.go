@@ -98,6 +98,9 @@ func (a *App) startup(ctx context.Context) {
 			"type": typ, "az": az, "el": el,
 		})
 	}
+	rot.OnMoving = func(moving bool) {
+		wailsruntime.EventsEmit(a.ctx, "rotator:moving", moving)
+	}
 	rot.OnError = func(msg string) {
 		a.emitStatus(msg)
 	}
@@ -444,10 +447,27 @@ func (a *App) RotatorSetFollow(mode string) {
 	}
 }
 
+// RotatorGoto points the rotator to the given azimuth/elevation.
+// Automatically disables follow mode. Silently ignored if rotator is not connected.
+func (a *App) RotatorGoto(az, el float64) error {
+	connected := a.rotator != nil && a.rotator.IsConnected()
+	debug.Log("[APP] RotatorGoto called: az=%.1f el=%.1f connected=%v", az, el, connected)
+	if !connected {
+		return fmt.Errorf("rotator not connected")
+	}
+	a.rotator.GotoPosition(az, el)
+	wailsruntime.EventsEmit(a.ctx, "rotator:followmode", "off")
+	return nil
+}
+
 // RotatorPark parks the rotator.
 func (a *App) RotatorPark() {
 	if a.rotator != nil {
+		p := a.cfg.ActiveProfile()
 		a.rotator.Park()
+		wailsruntime.EventsEmit(a.ctx, "rotator:goto", map[string]interface{}{
+			"az": p.RotatorParkAz, "el": p.RotatorParkEl,
+		})
 	}
 }
 
