@@ -579,18 +579,39 @@ func (a *App) GetSerialPorts() []string {
 }
 
 // StartHamlib starts (or restarts) the managed rigctld process for the active profile.
+// Runs asynchronously (like startManagedHamlib) to avoid blocking the Wails RPC thread
+// and to serialise with any concurrent stop+start sequence via hamlibStartMu.
 func (a *App) StartHamlib() error {
 	if a.hamlibMgr == nil {
 		return fmt.Errorf("hamlib manager not initialised")
 	}
-	return a.hamlibMgr.Start(a.cfg.ActiveProfile())
+	profile := a.cfg.ActiveProfile()
+	go func() {
+		a.hamlibStartMu.Lock()
+		defer a.hamlibStartMu.Unlock()
+		a.hamlibMgr.Stop()
+		if err := a.hamlibMgr.Start(profile); err != nil {
+			wailsruntime.EventsEmit(a.ctx, "hamlib:status", map[string]interface{}{
+				"running": false,
+				"message": err.Error(),
+			})
+		}
+	}()
+	return nil
 }
 
 // StopHamlib stops the managed rigctld process.
+// Runs asynchronously to serialise with any in-flight startManagedHamlib goroutine
+// via hamlibStartMu, preventing a concurrent start sequence from undoing the stop.
 func (a *App) StopHamlib() {
-	if a.hamlibMgr != nil {
-		a.hamlibMgr.Stop()
+	if a.hamlibMgr == nil {
+		return
 	}
+	go func() {
+		a.hamlibStartMu.Lock()
+		defer a.hamlibStartMu.Unlock()
+		a.hamlibMgr.Stop()
+	}()
 }
 
 // startManagedHamlib stops any running instance and starts a new one if the

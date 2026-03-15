@@ -337,9 +337,14 @@ func (m *Manager) monitor(ctx context.Context, cmd *exec.Cmd, cfg config.Profile
 				lastStderr = line
 			}
 		case <-processDone:
+			// Check ctx.Done() under the lock so we cannot race with Stop()
+			// setting m.state = StateStopped: if Stop() cancelled the context
+			// we must not overwrite StateStopped with StateError.
+			m.mu.Lock()
 			select {
 			case <-ctx.Done():
 				// Expected stop — don't report error.
+				m.mu.Unlock()
 				return
 			default:
 			}
@@ -347,7 +352,6 @@ func (m *Manager) monitor(ctx context.Context, cmd *exec.Cmd, cfg config.Profile
 			if lastStderr != "" {
 				msg = interpretStderr(lastStderr, cfg)
 			}
-			m.mu.Lock()
 			m.state = StateError
 			m.lastMsg = msg
 			m.notify(false, msg)
