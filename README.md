@@ -125,6 +125,127 @@ Find your radio's model number with `rigctl -l`. In WavelogGate, set Radio type 
 
 ---
 
+### Rotator Control
+
+WavelogGate can control an antenna rotator via a running `rotctld` (Hamlib) daemon.
+
+#### Configuration
+
+In the **Config → Rotator** section:
+
+| Field | Description |
+|-------|-------------|
+| Host | IP address of the `rotctld` host (leave empty to disable rotator) |
+| Port | TCP port of `rotctld` (default: `4533`) |
+| Threshold Az | Minimum azimuth change in degrees before a move command is sent (default: `2°`) |
+| Threshold El | Minimum elevation change in degrees before a move command is sent (default: `2°`) |
+| Park Az / El | Target position for the **Park** command (degrees) |
+
+Save the profile after changing these fields. The rotator panel in the Status tab only appears when a host is configured.
+
+#### Status tab panel
+
+```
+ROTATOR  ● connected
+
+Az: 123.4°   El:  45.0°
+
+○ Off   ● HF  Az: 270°
+        ○ SAT Az: 180°  El: 30°
+
+[Park]
+```
+
+- **Follow Off** — rotator holds its position; no automatic moves.
+- **Follow HF** — rotator tracks the bearing received from Wavelog's lookup result (`lookup_result` WebSocket message).
+- **Follow SAT** — rotator tracks azimuth and elevation from Wavelog's satellite tracking (`satellite_position` WebSocket message).
+- **Park** — switches follow to Off and moves to the configured park position, bypassing the movement threshold.
+
+#### rotctld setup
+
+Start `rotctld` for your rotator, for example:
+
+```bash
+# Yaesu G-5500 via serial
+rotctld -m 603 -r /dev/ttyUSB0 -s 9600 -t 4533
+
+# Dummy rotator for testing
+rotctld -m 1 -r /dev/null -t 4533
+```
+
+Find your rotator's model number with `rotctl -l`. In WavelogGate, set Host `127.0.0.1`, Port `4533`, and save.
+
+#### Follow mode and WebSocket integration
+
+When Wavelog sends bearing data over the WebSocket connection (port 54322), WavelogGate forwards it to the rotator according to the active follow mode:
+
+| WS message type | Follow mode | Action |
+|-----------------|-------------|--------|
+| `lookup_result` (contains `azimuth`) | HF | Move to the reported azimuth |
+| `satellite_position` (contains `azimuth` + `elevation`) | SAT | Move to the reported az/el |
+
+Bearing updates are rate-limited (150 ms minimum between moves). The bearing display in the Status tab updates immediately regardless of follow mode.
+
+---
+
+### Internal Radio (Internal Hamlib)
+
+WavelogGate can launch and manage its own `rigctld` process — useful if you want a single application to handle everything without running a separate daemon.
+
+#### Prerequisites
+
+`rigctld` must be available on the system. WavelogGate searches in this order:
+
+1. `~/.config/WavelogGate/hamlib/rigctld[.exe]` — a previously downloaded managed copy
+2. Common platform-specific paths (e.g. Homebrew on macOS: `/opt/homebrew/bin/`, `/usr/local/bin/`)
+3. System `PATH`
+
+**Windows** — click **Download** in the Internal Hamlib settings to automatically fetch `rigctld.exe` and its DLLs from the latest Hamlib GitHub release.
+
+**macOS** — install via Homebrew:
+```bash
+brew install hamlib
+```
+
+**Linux** — install via your package manager:
+```bash
+# Debian / Ubuntu
+sudo apt install hamlib-utils
+
+# Fedora / RHEL
+sudo dnf install hamlib
+
+# Arch / Manjaro
+sudo pacman -S hamlib
+```
+
+After installing, click **Detect** in the Internal Hamlib settings so WavelogGate can locate the binary.
+
+#### Configuration
+
+Enable **Internal Hamlib** (select `InternalHamlib` as Radio type). The following fields become available:
+
+| Field | Description |
+|-------|-------------|
+| Radio model | Hamlib model number — use the search box to find your radio (e.g. `IC-7300` → model 3073) |
+| Serial port | Device path (e.g. `/dev/ttyUSB0`, `/dev/cu.usbserial-*`, `COM3`) |
+| Baud rate | Serial baud rate matching your radio's CI-V / CAT setting |
+| Parity | Serial parity: `none`, `odd`, or `even` (default: `none`) |
+| Stop bits | Number of stop bits (0 = default; typically 1 or 2) |
+| Handshake | Flow control: `none`, `rtscts`, or `xonxoff` (default: `none`) |
+| rigctld port | TCP port that the managed `rigctld` will listen on (default: `4532`) |
+
+WavelogGate automatically passes these settings to `rigctld` and monitors the process. Status is shown in the Status tab (`Stopped` / `Starting…` / `Running` / `Error: …`).
+
+#### Notes
+
+- The managed `rigctld` process is stopped and restarted whenever you switch profiles or change the Internal Hamlib settings.
+- If `rigctld` exits unexpectedly the status changes to `Error` with a diagnostic message; fix the configuration and save to restart.
+- When **Internal Hamlib** is active, WavelogGate also connects to the managed `rigctld` on the same port to poll frequency and mode — no separate Hamlib entry is needed.
+- On macOS the serial port is often listed under `/dev/cu.usbserial-*`; use the serial port dropdown to enumerate detected ports.
+
+---
+
 ### WebSocket broadcast
 
 Any client can connect to `ws://localhost:54322` to receive live radio status:
