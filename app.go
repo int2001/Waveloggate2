@@ -448,7 +448,7 @@ func (a *App) RotatorSetFollow(mode string) {
 }
 
 // RotatorGoto points the rotator to the given azimuth/elevation.
-// Automatically disables follow mode. Silently ignored if rotator is not connected.
+// Automatically disables follow mode. Returns an error if the rotator is not connected.
 func (a *App) RotatorGoto(az, el float64) error {
 	connected := a.rotator != nil && a.rotator.IsConnected()
 	debug.Log("[APP] RotatorGoto called: az=%.1f el=%.1f connected=%v", az, el, connected)

@@ -167,7 +167,7 @@
 
   // ── Lifecycle ──────────────────────────────────────────────────────────────
   let offRadio, offQso, offStatus, offRotPos, offRotStatus, offRotBearing,
-      offRotMoving, offRotFollow, offProfile, offRadioEnabled, offRotEnabled, offAdvanced, offCert;
+      offRotMoving, offRotFollow, offRotGoto, offProfile, offRadioEnabled, offRotEnabled, offAdvanced, offCert;
 
   onMount(async () => {
     updateClock();
@@ -223,7 +223,7 @@
     });
     offCert = EventsOn("cert:install_needed", (data) => { certInfo = data; });
     offRotFollow = EventsOn("rotator:followmode", (mode) => { rotFollow = mode; });
-    EventsOn("rotator:goto", (data) => {
+    offRotGoto = EventsOn("rotator:goto", (data) => {
       if (data) { demandedAz = data.az; demandedEl = data.el; _lastRotCmdTime = Date.now(); }
     });
 
@@ -271,6 +271,7 @@
     if (offRotStatus)  offRotStatus();
     if (offRotMoving)  offRotMoving();
     if (offRotFollow)  offRotFollow();
+    if (offRotGoto)    offRotGoto();
     if (offRotBearing) offRotBearing();
     if (offProfile)    offProfile();
     if (offRotEnabled) offRotEnabled();
