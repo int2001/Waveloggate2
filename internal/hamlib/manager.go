@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"context"
 	"fmt"
+	"io"
 	"net"
 	"os/exec"
 	"strconv"
@@ -27,13 +28,14 @@ const (
 
 // Manager manages the lifecycle of a rigctld child process.
 type Manager struct {
-	mu          sync.Mutex
-	cmd         *exec.Cmd
-	processDone chan struct{} // closed by the sole cmd.Wait() goroutine; nil when no process
-	state       State
-	lastMsg     string
-	cancelMon   context.CancelFunc
-	cfg         config.Profile
+	mu           sync.Mutex
+	cmd          *exec.Cmd
+	processDone  chan struct{} // closed by the sole cmd.Wait() goroutine; nil when no process
+	stderrCloser io.Closer   // stderr pipe; closing it unblocks the scanner goroutine
+	state        State
+	lastMsg      string
+	cancelMon    context.CancelFunc
+	cfg          config.Profile
 
 	// OnStatus is called on every state transition.
 	// running=true means rigctld is accepting connections.
@@ -114,8 +116,15 @@ func (m *Manager) Start(cfg config.Profile) error {
 	m.cmd = nil
 	oldProcessDone := m.processDone
 	m.processDone = nil
+	oldStderrCloser := m.stderrCloser
+	m.stderrCloser = nil
 	m.cfg = cfg
 	m.mu.Unlock()
+
+	// Close old stderr pipe so its scanner goroutine exits promptly.
+	if oldStderrCloser != nil {
+		oldStderrCloser.Close()
+	}
 
 	// Terminate the old process OUTSIDE the lock (Wait can block up to 5 s).
 	stopCmd(oldCmd, oldProcessDone)
@@ -170,6 +179,7 @@ func (m *Manager) Start(cfg config.Profile) error {
 	m.mu.Lock()
 	m.cmd = cmd
 	m.processDone = processDone
+	m.stderrCloser = stderr
 	m.cancelMon = cancel
 	m.setState(StateStarting, "Starting…")
 	m.mu.Unlock()
@@ -206,6 +216,8 @@ func (m *Manager) Stop() {
 	m.cmd = nil
 	processDone := m.processDone
 	m.processDone = nil
+	stderrCloser := m.stderrCloser
+	m.stderrCloser = nil
 	wasRunning := m.state != StateStopped
 	m.state = StateStopped
 	m.lastMsg = ""
@@ -213,6 +225,11 @@ func (m *Manager) Stop() {
 
 	if wasRunning {
 		m.notify(false, "")
+	}
+
+	// Close stderr pipe so the scanner goroutine exits promptly.
+	if stderrCloser != nil {
+		stderrCloser.Close()
 	}
 
 	// Terminate and wait OUTSIDE the lock (can block up to 5 s).

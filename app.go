@@ -250,6 +250,12 @@ func (a *App) startup(ctx context.Context) {
 
 // shutdown is called by Wails when the application closes.
 func (a *App) shutdown(ctx context.Context) {
+	if a.wsHub != nil {
+		a.wsHub.Shutdown(ctx)
+	}
+	if a.qsySrv != nil {
+		a.qsySrv.Shutdown(ctx)
+	}
 	if a.hamlibMgr != nil {
 		a.hamlibMgr.Stop()
 	}

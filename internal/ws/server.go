@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"sync"
@@ -45,6 +46,9 @@ type Hub struct {
 	clients   map[*client]struct{}
 	current   []byte // last status for welcome messages
 	OnMessage func(data []byte)
+
+	srvMu   sync.Mutex
+	servers []*http.Server
 }
 
 // NewHub creates a new Hub.
@@ -140,16 +144,45 @@ func (h *Hub) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h.remove(c)
 }
 
+// Shutdown gracefully stops all HTTP servers started by this Hub.
+func (h *Hub) Shutdown(ctx context.Context) {
+	h.srvMu.Lock()
+	srvs := h.servers
+	h.servers = nil
+	h.srvMu.Unlock()
+	for _, srv := range srvs {
+		_ = srv.Shutdown(ctx)
+	}
+}
+
+func (h *Hub) addServer(srv *http.Server) {
+	h.srvMu.Lock()
+	h.servers = append(h.servers, srv)
+	h.srvMu.Unlock()
+}
+
 // ListenAndServe starts the WebSocket server on the given address.
 func (h *Hub) ListenAndServe(addr string) error {
 	mux := http.NewServeMux()
 	mux.Handle("/", h)
-	return http.ListenAndServe(addr, mux)
+	srv := &http.Server{Addr: addr, Handler: mux}
+	h.addServer(srv)
+	err := srv.ListenAndServe()
+	if err == http.ErrServerClosed {
+		return nil
+	}
+	return err
 }
 
 // ListenAndServeTLS starts a secure WebSocket (WSS) server on the given address.
 func (h *Hub) ListenAndServeTLS(addr, certFile, keyFile string) error {
 	mux := http.NewServeMux()
 	mux.Handle("/", h)
-	return http.ListenAndServeTLS(addr, certFile, keyFile, mux)
+	srv := &http.Server{Addr: addr, Handler: mux}
+	h.addServer(srv)
+	err := srv.ListenAndServeTLS(certFile, keyFile)
+	if err == http.ErrServerClosed {
+		return nil
+	}
+	return err
 }

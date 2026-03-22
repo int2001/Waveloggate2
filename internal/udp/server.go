@@ -9,6 +9,9 @@ import (
 	"waveloggate/internal/wavelog"
 )
 
+// maxConcurrentHandlers limits how many datagrams are processed in parallel.
+const maxConcurrentHandlers = 16
+
 // Server is the UDP listener for WSJT-X / FLDigi packets.
 type Server struct {
 	port     int
@@ -16,6 +19,7 @@ type Server struct {
 	onResult func(result *wavelog.QSOResult)
 	onStatus func(msg string)
 	conn     *net.UDPConn
+	sem      chan struct{}
 }
 
 // New creates a new UDP server.
@@ -25,6 +29,7 @@ func New(port int, wlClient *wavelog.Client, onResult func(result *wavelog.QSORe
 		wlClient: wlClient,
 		onResult: onResult,
 		onStatus: onStatus,
+		sem:      make(chan struct{}, maxConcurrentHandlers),
 	}
 }
 
@@ -65,7 +70,12 @@ func (s *Server) readLoop() {
 		if err != nil {
 			return
 		}
-		go s.handleDatagram(string(buf[:n]))
+		data := string(buf[:n])
+		s.sem <- struct{}{}
+		go func() {
+			defer func() { <-s.sem }()
+			s.handleDatagram(data)
+		}()
 	}
 }
 
