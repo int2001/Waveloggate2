@@ -18,6 +18,7 @@ import (
 	"waveloggate/internal/qsy"
 	"waveloggate/internal/radio"
 	"waveloggate/internal/rotator"
+	"waveloggate/internal/startmenu"
 	"waveloggate/internal/udp"
 	"waveloggate/internal/wavelog"
 	"waveloggate/internal/ws"
@@ -52,6 +53,8 @@ func NewApp() *App {
 // startup is called by Wails when the application starts.
 func (a *App) startup(ctx context.Context) {
 	a.ctx = ctx
+
+	go startmenu.EnsureShortcut("WaveLogGate") //nolint:errcheck
 
 	cfg, err := config.Load()
 	if err != nil {
