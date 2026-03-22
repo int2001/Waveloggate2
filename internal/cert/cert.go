@@ -270,7 +270,3 @@ func mustMarshalKey(priv *ecdsa.PrivateKey) []byte {
 	return der
 }
 
-// parseCertDER parses a DER-encoded certificate. Used by platform trust files.
-func parseCertDER(der []byte) (*x509.Certificate, error) {
-	return x509.ParseCertificate(der)
-}

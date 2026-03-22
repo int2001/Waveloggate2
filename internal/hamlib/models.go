@@ -122,9 +122,6 @@ func parseRigctldList(output string) []RadioModel {
 			model = fields[2]
 		}
 
-		// Clean up model name (might have trailing stuff)
-		model = strings.Split(model, " ")[0]
-
 		models = append(models, RadioModel{
 			ID:           id,
 			Manufacturer: manufacturer,

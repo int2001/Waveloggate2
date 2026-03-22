@@ -1,11 +1,13 @@
 package qsy
 
 import (
+	"context"
 	"crypto/tls"
 	"net"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 
 	"github.com/soheilhy/cmux"
 )
@@ -13,6 +15,10 @@ import (
 // Server is the QSY HTTP server.
 type Server struct {
 	setFreqMode func(hz int64, mode string) error
+
+	mu       sync.Mutex
+	httpSrv  *http.Server
+	listener net.Listener
 }
 
 // New creates a new QSY server.
@@ -58,9 +64,34 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK")) //nolint:errcheck
 }
 
+// Shutdown gracefully stops the QSY server.
+func (s *Server) Shutdown(ctx context.Context) {
+	s.mu.Lock()
+	httpSrv := s.httpSrv
+	listener := s.listener
+	s.httpSrv = nil
+	s.listener = nil
+	s.mu.Unlock()
+
+	if httpSrv != nil {
+		_ = httpSrv.Shutdown(ctx)
+	}
+	if listener != nil {
+		listener.Close()
+	}
+}
+
 // ListenAndServe starts the QSY server on the given address.
 func (s *Server) ListenAndServe(addr string) error {
-	return http.ListenAndServe(addr, s)
+	srv := &http.Server{Addr: addr, Handler: s}
+	s.mu.Lock()
+	s.httpSrv = srv
+	s.mu.Unlock()
+	err := srv.ListenAndServe()
+	if err == http.ErrServerClosed {
+		return nil
+	}
+	return err
 }
 
 // ListenAndServePolyglot accepts both plain HTTP and TLS on the same port.
@@ -70,8 +101,13 @@ func (s *Server) ListenAndServePolyglot(addr, certFile, keyFile string) error {
 		return err
 	}
 
+	s.mu.Lock()
+	s.listener = ln
+	s.mu.Unlock()
+
 	tlsCert, err := tls.LoadX509KeyPair(certFile, keyFile)
 	if err != nil {
+		ln.Close()
 		return err
 	}
 	tlsCfg := &tls.Config{Certificates: []tls.Certificate{tlsCert}}
@@ -80,8 +116,13 @@ func (s *Server) ListenAndServePolyglot(addr, certFile, keyFile string) error {
 	tlsL := m.Match(cmux.TLS())
 	httpL := m.Match(cmux.HTTP1Fast(), cmux.HTTP2())
 
-	go http.Serve(httpL, s)            //nolint:errcheck
+	go http.Serve(httpL, s)                          //nolint:errcheck
 	go http.Serve(tls.NewListener(tlsL, tlsCfg), s) //nolint:errcheck
 
-	return m.Serve()
+	err = m.Serve()
+	// Ignore "closed network connection" — that is the expected result of Shutdown().
+	if err != nil && strings.Contains(err.Error(), "closed network connection") {
+		return nil
+	}
+	return err
 }

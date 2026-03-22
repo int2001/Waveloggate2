@@ -54,17 +54,14 @@ func (p *Poller) Start(ctx context.Context) {
 	p.cancel = cancel
 
 	go func() {
+		ticker := time.NewTicker(1 * time.Second)
+		defer ticker.Stop()
 		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-			}
 			p.poll()
 			select {
 			case <-ctx.Done():
 				return
-			case <-time.After(1 * time.Second):
+			case <-ticker.C:
 			}
 		}
 	}()

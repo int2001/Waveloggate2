@@ -62,12 +62,7 @@ func (a *App) startup(ctx context.Context) {
 	profile := cfg.ActiveProfile()
 
 	// Validate Wavelog URL configuration (fast, non-blocking check).
-	if valid, warning := config.ValidateURL(profile.WavelogURL); !valid {
-		a.emitStatus("Configuration Error: " + warning)
-	} else if warning != "" {
-		// URL is valid but has informational warning (e.g., localhost)
-		a.emitStatus("Notice: " + warning)
-	}
+	a.emitURLWarning(profile.WavelogURL)
 
 	// Wavelog client.
 	a.wlClient = wavelog.New(&profile, appVersion)
@@ -250,6 +245,12 @@ func (a *App) startup(ctx context.Context) {
 
 // shutdown is called by Wails when the application closes.
 func (a *App) shutdown(ctx context.Context) {
+	if a.wsHub != nil {
+		a.wsHub.Shutdown(ctx)
+	}
+	if a.qsySrv != nil {
+		a.qsySrv.Shutdown(ctx)
+	}
 	if a.hamlibMgr != nil {
 		a.hamlibMgr.Stop()
 	}
@@ -270,6 +271,18 @@ func (a *App) emitStatus(msg string) {
 	}
 }
 
+func (a *App) emitURLWarning(url string) {
+	valid, warning := config.ValidateURL(url)
+	switch {
+	case !valid:
+		a.emitStatus("Configuration Error: " + warning)
+	case warning != "":
+		a.emitStatus("Notice: " + warning)
+	default:
+		a.emitStatus("")
+	}
+}
+
 // ─── Frontend-exposed methods ──────────────────────────────────────────────────
 
 // GetConfig returns the current configuration.
@@ -286,15 +299,7 @@ func (a *App) SaveConfig(cfg config.Config) config.Config {
 	profile := cfg.ActiveProfile()
 
 	// Validate Wavelog URL when config is saved.
-	if valid, warning := config.ValidateURL(profile.WavelogURL); !valid {
-		a.emitStatus("Configuration Error: " + warning)
-	} else if warning != "" {
-		// URL is valid but has informational warning
-		a.emitStatus("Notice: " + warning)
-	} else {
-		// Clear any previous URL-related warnings
-		a.emitStatus("")
-	}
+	a.emitURLWarning(profile.WavelogURL)
 
 	a.wlClient.UpdateProfile(&profile)
 	a.poller.UpdateConfig(&profile)
