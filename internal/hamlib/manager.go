@@ -236,15 +236,6 @@ func (m *Manager) Stop() {
 	stopCmd(cmd, processDone)
 }
 
-// Restart stops and then starts rigctld with the current profile config.
-func (m *Manager) Restart() error {
-	m.mu.Lock()
-	cfg := m.cfg
-	m.mu.Unlock()
-	m.Stop()
-	return m.Start(cfg)
-}
-
 // stopCmd sends a termination signal to cmd and waits for the process to exit
 // via processDone (which is closed by the sole cmd.Wait() goroutine started in
 // Start). It never calls cmd.Wait() itself to prevent the double-Wait race.

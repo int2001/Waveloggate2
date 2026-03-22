@@ -2,6 +2,7 @@ package cert
 
 import (
 	"crypto/sha1"
+	"crypto/x509"
 	"encoding/pem"
 	"fmt"
 	"os"
@@ -20,7 +21,7 @@ func IsCertInstalled(caCertPath string) bool {
 	if block == nil {
 		return false
 	}
-	caCert, err := parseCertDER(block.Bytes)
+	caCert, err := x509.ParseCertificate(block.Bytes)
 	if err != nil {
 		return false
 	}
