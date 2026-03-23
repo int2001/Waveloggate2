@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 // EnsureShortcut creates a per-user Start Menu shortcut for the running
@@ -24,26 +25,30 @@ func EnsureShortcut(appName string) error {
 
 	linkPath := filepath.Join(appData, `Microsoft\Windows\Start Menu\Programs`, appName+".lnk")
 
-	// Already exists — nothing to do.
-	if _, err := os.Stat(linkPath); err == nil {
-		return nil
-	}
-
 	exeEscaped := strings.ReplaceAll(exePath, `'`, `''`)
 	linkEscaped := strings.ReplaceAll(linkPath, `'`, `''`)
 	nameEscaped := strings.ReplaceAll(appName, `'`, `''`)
 
+	// If the shortcut already exists and points to the current exe, nothing to do.
 	ps := fmt.Sprintf(
 		`$ws = New-Object -ComObject WScript.Shell; `+
-			`$sc = $ws.CreateShortcut('%s'); `+
+			`$link = '%s'; `+
+			`if ((Test-Path $link) -and ($ws.CreateShortcut($link).TargetPath -eq '%s')) { exit 0 }; `+
+			`$sc = $ws.CreateShortcut($link); `+
 			`$sc.TargetPath = '%s'; `+
 			`$sc.Description = '%s'; `+
 			`$sc.IconLocation = '%s,0'; `+
 			`$sc.Save()`,
-		linkEscaped, exeEscaped, nameEscaped, exeEscaped,
+		linkEscaped, exeEscaped, exeEscaped, nameEscaped, exeEscaped,
 	)
 
-	out, err := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", ps).CombinedOutput()
+	const createNoWindow = 0x08000000
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", ps)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow:    true,
+		CreationFlags: createNoWindow,
+	}
+	out, err := cmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("create shortcut: %w: %s", err, strings.TrimSpace(string(out)))
 	}

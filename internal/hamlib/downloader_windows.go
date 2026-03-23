@@ -13,6 +13,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"syscall"
 	"time"
 
 	"waveloggate/internal/debug"
@@ -29,9 +30,9 @@ func listWindowsCOMPorts() []string {
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
-	out, err := exec.CommandContext(ctx,
-		"reg", "query", `HKLM\HARDWARE\DEVICEMAP\SERIALCOMM`,
-	).Output()
+	regCmd := exec.CommandContext(ctx, "reg", "query", `HKLM\HARDWARE\DEVICEMAP\SERIALCOMM`)
+	regCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
+	out, err := regCmd.Output()
 	if err != nil {
 		debug.Log("[HAMLIB] Registry query failed: %v", err)
 		// Provide more specific error message
@@ -83,6 +84,7 @@ func listWindowsCOMPortsPowerShell() []string {
 	cmd := exec.CommandContext(ctx, "powershell",
 		"-NoProfile", "-NonInteractive",
 		"-Command", "[System.IO.Ports.SerialPort]::GetPortNames()")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
 
 	output, err := cmd.Output()
 	if err != nil {
@@ -243,7 +245,9 @@ func Download(ctx context.Context, progressCh chan<- int) error {
 
 	// Step 5: verify the binary works.
 	debug.Log("[HAMLIB] verifying rigctld.exe --version")
-	out, err := exec.Command(destPath, "--version").Output()
+	verCmd := exec.Command(destPath, "--version")
+	verCmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true, CreationFlags: 0x08000000}
+	out, err := verCmd.Output()
 	if err != nil {
 		return fmt.Errorf("extracted rigctld.exe failed version check: %w", err)
 	}

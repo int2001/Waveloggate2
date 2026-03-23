@@ -60,6 +60,7 @@ func getDynamicModels() ([]RadioModel, error) {
 
 	// Run rigctld --list to get actual model list
 	cmd := exec.Command(rigctldPath, "--list")
+	setCmdAttrs(cmd)
 	output, err := cmd.Output()
 	if err != nil {
 		// rigctld exists but --list failed, use hardcoded fallback

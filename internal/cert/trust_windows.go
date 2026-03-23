@@ -8,7 +8,19 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 )
+
+const createNoWindow = 0x08000000
+
+func hiddenCmd(name string, args ...string) *exec.Cmd {
+	cmd := exec.Command(name, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		HideWindow:    true,
+		CreationFlags: createNoWindow,
+	}
+	return cmd
+}
 
 // IsCertInstalled reports whether the exact Root CA (matched by SHA-1 thumbprint)
 // is present in the Windows Trusted Root Certification Authorities store.
@@ -29,7 +41,7 @@ func IsCertInstalled(caCertPath string) bool {
 	// Windows certutil uses the SHA-1 thumbprint (no colons, uppercase).
 	thumbprint := fmt.Sprintf("%X", sha1.Sum(caCert.Raw))
 
-	out, err := exec.Command("certutil", "-store", "Root").Output()
+	out, err := hiddenCmd("certutil", "-store", "Root").Output()
 	if err != nil || len(out) == 0 {
 		return false
 	}
@@ -45,7 +57,7 @@ func Install(caCertPath string) InstallResult {
 		strings.ReplaceAll(caCertPath, `'`, `''`),
 	)
 
-	out, err := exec.Command("powershell", "-NoProfile", "-NonInteractive",
+	out, err := hiddenCmd("powershell", "-NoProfile", "-NonInteractive",
 		"-Command", psArgs).CombinedOutput()
 	if err != nil {
 		return InstallResult{
