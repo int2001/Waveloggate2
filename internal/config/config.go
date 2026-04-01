@@ -12,17 +12,17 @@ import (
 
 // Profile holds per-profile configuration.
 type Profile struct {
-	WavelogURL       string  `json:"wavelog_url"`
-	WavelogKey       string  `json:"wavelog_key"`
-	WavelogID        string  `json:"wavelog_id"`
-	WavelogRadioname string  `json:"wavelog_radioname"`
-	WavelogPmode     bool    `json:"wavelog_pmode"`
-	FlrigHost        string  `json:"flrig_host"`
-	FlrigPort        string  `json:"flrig_port"`
-	FlrigEna         bool    `json:"flrig_ena"`
-	HamlibHost       string  `json:"hamlib_host"`
-	HamlibPort       string  `json:"hamlib_port"`
-	HamlibEna        bool    `json:"hamlib_ena"`
+	WavelogURL         string  `json:"wavelog_url"`
+	WavelogKey         string  `json:"wavelog_key"`
+	WavelogID          string  `json:"wavelog_id"`
+	WavelogRadioname   string  `json:"wavelog_radioname"`
+	WavelogPmode       bool    `json:"wavelog_pmode"`
+	FlrigHost          string  `json:"flrig_host"`
+	FlrigPort          string  `json:"flrig_port"`
+	FlrigEna           bool    `json:"flrig_ena"`
+	HamlibHost         string  `json:"hamlib_host"`
+	HamlibPort         string  `json:"hamlib_port"`
+	HamlibEna          bool    `json:"hamlib_ena"`
 	IgnorePwr          bool    `json:"ignore_pwr"`
 	RotatorEnabled     bool    `json:"rotator_enabled"`
 	RotatorHost        string  `json:"rotator_host"`
@@ -55,17 +55,17 @@ type Config struct {
 
 func defaultProfile() Profile {
 	return Profile{
-		WavelogURL:       "",
-		WavelogKey:       "",
-		WavelogID:        "0",
-		WavelogRadioname: "WLGate",
-		WavelogPmode:     true,
-		FlrigHost:        "127.0.0.1",
-		FlrigPort:        "12345",
-		FlrigEna:         false,
-		HamlibHost:       "127.0.0.1",
-		HamlibPort:       "4532",
-		HamlibEna:        false,
+		WavelogURL:         "",
+		WavelogKey:         "",
+		WavelogID:          "0",
+		WavelogRadioname:   "WLGate",
+		WavelogPmode:       true,
+		FlrigHost:          "127.0.0.1",
+		FlrigPort:          "12345",
+		FlrigEna:           false,
+		HamlibHost:         "127.0.0.1",
+		HamlibPort:         "4532",
+		HamlibEna:          false,
 		IgnorePwr:          false,
 		RotatorHost:        "",
 		RotatorPort:        "4533",

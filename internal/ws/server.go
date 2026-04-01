@@ -22,8 +22,8 @@ type RadioStatusMsg struct {
 	Power       float64 `json:"power,omitempty"`
 	Radio       string  `json:"radio"`
 	Timestamp   int64   `json:"timestamp"`
-	FrequencyRx int64  `json:"frequency_rx,omitempty"`
-	ModeRx      string `json:"mode_rx,omitempty"`
+	FrequencyRx int64   `json:"frequency_rx,omitempty"`
+	ModeRx      string  `json:"mode_rx,omitempty"`
 }
 
 type client struct {

@@ -116,7 +116,7 @@ func (s *Server) ListenAndServePolyglot(addr, certFile, keyFile string) error {
 	tlsL := m.Match(cmux.TLS())
 	httpL := m.Match(cmux.HTTP1Fast(), cmux.HTTP2())
 
-	go http.Serve(httpL, s)                          //nolint:errcheck
+	go http.Serve(httpL, s)                         //nolint:errcheck
 	go http.Serve(tls.NewListener(tlsL, tlsCfg), s) //nolint:errcheck
 
 	err = m.Serve()

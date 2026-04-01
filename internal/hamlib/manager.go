@@ -31,7 +31,7 @@ type Manager struct {
 	mu           sync.Mutex
 	cmd          *exec.Cmd
 	processDone  chan struct{} // closed by the sole cmd.Wait() goroutine; nil when no process
-	stderrCloser io.Closer   // stderr pipe; closing it unblocks the scanner goroutine
+	stderrCloser io.Closer     // stderr pipe; closing it unblocks the scanner goroutine
 	state        State
 	lastMsg      string
 	cancelMon    context.CancelFunc

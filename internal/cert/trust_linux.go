@@ -94,9 +94,9 @@ func IsCertInstalled(caCertPath string) bool {
 
 	// Check system trust bundle (Debian/Ubuntu path as canonical check).
 	bundles := []string{
-		"/etc/ssl/certs/ca-certificates.crt",      // Debian/Ubuntu
+		"/etc/ssl/certs/ca-certificates.crt",                // Debian/Ubuntu
 		"/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", // Fedora/RHEL
-		"/etc/ssl/ca-bundle.pem",                  // openSUSE
+		"/etc/ssl/ca-bundle.pem",                            // openSUSE
 	}
 	for _, bundle := range bundles {
 		if certInBundle(bundle, fp) {

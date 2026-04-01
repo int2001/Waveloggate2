@@ -269,4 +269,3 @@ func mustMarshalKey(priv *ecdsa.PrivateKey) []byte {
 	}
 	return der
 }
-

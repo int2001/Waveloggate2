@@ -35,7 +35,7 @@ func commonPlatformPaths(executableName string) []string {
 		// macOS: Homebrew installation paths for both Intel and Apple Silicon
 		return []string{
 			"/opt/homebrew/bin/" + executableName, // Apple Silicon
-			"/usr/local/bin/" + executableName,     // Intel Macs
+			"/usr/local/bin/" + executableName,    // Intel Macs
 		}
 	case "linux":
 		// Linux: common installation paths
@@ -196,4 +196,3 @@ func listPortsGlob(patterns []string) []string {
 	}
 	return ports
 }
-

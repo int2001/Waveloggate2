@@ -147,8 +147,6 @@ func (p *Poller) poll() {
 		// Send to Wavelog.
 		if p.wlClient != nil {
 			data := wavelog.RadioData{
-				Radio:     cfg.WavelogRadioname,
-				Key:       cfg.WavelogKey,
 				Frequency: int64(math.Round(status.FreqA)),
 				Mode:      status.Mode,
 				Power:     status.Power,

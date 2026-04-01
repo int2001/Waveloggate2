@@ -16,20 +16,18 @@ import (
 
 // QSOResult holds the result of a QSO submission.
 type QSOResult struct {
-	Success  bool   `json:"success"`
-	Call     string `json:"call"`
-	Band     string `json:"band"`
-	Mode     string `json:"mode"`
-	RstSent  string `json:"rstSent"`
-	RstRcvd  string `json:"rstRcvd"`
-	TimeOn   string `json:"timeOn"`
-	Reason   string `json:"reason"`
+	Success bool   `json:"success"`
+	Call    string `json:"call"`
+	Band    string `json:"band"`
+	Mode    string `json:"mode"`
+	RstSent string `json:"rstSent"`
+	RstRcvd string `json:"rstRcvd"`
+	TimeOn  string `json:"timeOn"`
+	Reason  string `json:"reason"`
 }
 
 // RadioData holds the data sent to Wavelog's /api/radio endpoint.
 type RadioData struct {
-	Radio       string
-	Key         string
 	Frequency   int64
 	Mode        string
 	Power       float64
@@ -162,7 +160,6 @@ func (c *Client) SendQSO(adifStr string, dryRun bool) (*QSOResult, error) {
 	return &QSOResult{Success: false, Reason: reason}, nil
 }
 
-
 type radioPayload struct {
 	Radio       string  `json:"radio"`
 	Key         string  `json:"key"`
@@ -211,6 +208,7 @@ func (c *Client) UpdateRadioStatus(data RadioData) error {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", strings.TrimRight("WavelogGate2 "+c.appVersion, " "))
 
 	resp, err := c.httpClient.Do(req)
 	if err != nil {

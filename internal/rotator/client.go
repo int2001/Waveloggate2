@@ -50,7 +50,7 @@ type Client struct {
 	connTarget string // "host:port" last connected to
 	buf        string
 
-	currentCmd  string    // "set" | "get" | ""
+	currentCmd  string // "set" | "get" | ""
 	busyTimer   *time.Timer
 	pendingSet  *Position // latest P command not yet sent
 	pollPending bool
@@ -68,10 +68,10 @@ type Client struct {
 	pendingWs *wsCmd
 	wsTimer   *time.Timer
 
-	OnPosition func(az, el float64)            // → Wails event rotator:position
+	OnPosition func(az, el float64)             // → Wails event rotator:position
 	OnStatus   func(connected bool)             // → Wails event rotator:status
 	OnBearing  func(typ string, az, el float64) // → Wails event rotator:bearing
-	OnMoving   func(moving bool)               // → Wails event rotator:moving
+	OnMoving   func(moving bool)                // → Wails event rotator:moving
 	OnError    func(msg string)                 // → Wails event status:message
 
 	cmdCh  chan struct{}
