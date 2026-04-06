@@ -407,7 +407,7 @@ func (c *HamlibClient) SetFreqMode(hz int64, mode string) error {
 		return err
 	}
 	if mode != "" {
-		if _, err := fmt.Fprintf(conn, "M %s 0\n", mode); err != nil {
+		if _, err := fmt.Fprintf(conn, "M %s -1\n", mode); err != nil {
 			return err
 		}
 	}
